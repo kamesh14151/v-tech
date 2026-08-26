@@ -11,7 +11,7 @@ export function BusinessImpactScoreView() {
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
           <span>Module 14</span>
           <span>•</span>
-          <span className="text-amber-500 font-bold">Differentiator 14 💰</span>
+          <span className="text-amber-500 font-bold">Differentiator 14 </span>
           <span>•</span>
           <span className="text-foreground">Financial & PR ROI Quantification Model</span>
         </div>

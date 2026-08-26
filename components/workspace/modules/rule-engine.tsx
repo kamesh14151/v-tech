@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sliders, Plus, Play, Trash2, CheckCircle2, AlertOctagon, Bell, Mail, MessageSquare, Shield, Sparkles } from "lucide-react";
+import { Sliders, Plus, Trash2, Settings2, Play, Pause, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Rule {
@@ -11,6 +11,7 @@ interface Rule {
   action: string;
   status: "Active" | "Paused";
   triggeredCount: number;
+  lastTriggered: string;
 }
 
 const initialRules: Rule[] = [
@@ -21,6 +22,7 @@ const initialRules: Rule[] = [
     action: "Send Urgent SMS to PR Crisis Team + Tag #Crisis-Alert",
     status: "Active",
     triggeredCount: 3,
+    lastTriggered: "Today, 8:21 PM"
   },
   {
     id: "rule-2",
@@ -29,14 +31,16 @@ const initialRules: Rule[] = [
     action: "Add to Executive Morning Briefing + Slack #exec-coverage",
     status: "Active",
     triggeredCount: 42,
+    lastTriggered: "Yesterday, 10:14 AM"
   },
   {
     id: "rule-3",
-    name: "Competitor Omission Gap Detector Trigger",
+    name: "Competitor Action Detected",
     condition: "IF [Competitor Mentioned] AND NOT [Acme Mentioned] AND [Category = Robotics]",
     action: "Log to Coverage Gap Matrix + Flag Outreach Lead",
-    status: "Active",
+    status: "Paused",
     triggeredCount: 12,
+    lastTriggered: "Aug 20, 2:30 PM"
   },
 ];
 
@@ -44,8 +48,9 @@ export function RuleEngineView() {
   const [rules, setRules] = useState<Rule[]>(initialRules);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newRuleName, setNewRuleName] = useState("");
-  const [newRuleCondition, setNewRuleCondition] = useState("IF [Product = TitanX] AND [Sentiment > 0.5]");
-  const [newRuleAction, setNewRuleAction] = useState("Slack #product-launches + Add 10 Relevance Points");
+  const [newRuleCondition, setNewRuleCondition] = useState("");
+  const [newRuleAction, setNewRuleAction] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleAddRule = () => {
     if (!newRuleName) return;
@@ -56,6 +61,7 @@ export function RuleEngineView() {
       action: newRuleAction,
       status: "Active",
       triggeredCount: 0,
+      lastTriggered: "Never",
     };
     setRules([...rules, newRule]);
     setNewRuleName("");
@@ -72,25 +78,30 @@ export function RuleEngineView() {
     setRules(rules.filter((r) => r.id !== id));
   };
 
+  const duplicateRule = (r: Rule) => {
+    setRules([...rules, { ...r, id: `rule-${Date.now()}`, name: `${r.name} (Copy)`, triggeredCount: 0, lastTriggered: "Never" }]);
+  };
+
+  // Convert technical condition "IF [Entity = Acme] AND [Sentiment < -0.45]" into readable "Acme is mentioned AND sentiment < -0.45"
+  const makeReadable = (condition: string) => {
+    return condition
+      .replace(/^IF /i, "")
+      .replace(/\[Entity = (.*?)\]/i, "$1 is mentioned")
+      .replace(/\[(.*?)\]/g, "$1");
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
-            <span>Module 8</span>
-            <span>•</span>
-            <span className="text-emerald-500 font-bold">Requirement 2 ⚙️</span>
-            <span>•</span>
-            <span className="text-foreground">Custom Boolean & Sentiment Rule Builder</span>
-          </div>
-          <h1 className="text-3xl font-display tracking-tight">Configurable Rule Engine</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Build complex proximity, boolean, sentiment, and entity rules to automate alert routing and tagging.
+          <h1 className="text-2xl font-display tracking-tight">Rules & Alerts</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Automate alerts, briefings, and notifications based on live intelligence signals.
           </p>
         </div>
 
         <Button onClick={() => setIsModalOpen(true)} className="bg-foreground text-background hover:bg-foreground/90 rounded-full font-mono text-xs gap-2">
-          <Plus className="w-4 h-4" /> Create New Automation Rule
+          <Plus className="w-3.5 h-3.5" /> Create Rule
         </Button>
       </div>
 
@@ -99,52 +110,69 @@ export function RuleEngineView() {
         {rules.map((r) => (
           <div
             key={r.id}
-            className="p-6 rounded-2xl border border-foreground/10 bg-card space-y-4 hover:border-foreground/30 transition-all"
+            className="p-5 rounded-xl border border-foreground/10 bg-card hover:border-foreground/25 transition-all"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <h3 className="font-sans font-semibold text-lg text-foreground">{r.name}</h3>
-                <span
-                  className={`px-2.5 py-0.5 rounded font-mono text-[10px] font-bold ${
-                    r.status === "Active"
-                      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {r.status}
-                </span>
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h3 className="font-semibold text-foreground text-sm">{r.name}</h3>
+                <div className="flex items-center gap-2 mt-1 text-[10px] font-mono">
+                  <span className={r.status === "Active" ? "text-emerald-500 font-bold" : "text-muted-foreground"}>{r.status.toUpperCase()}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">Triggered: {r.triggeredCount} times</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">Last: {r.lastTriggered}</span>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 font-mono text-xs">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => toggleRuleStatus(r.id)}
-                  className="px-3 py-1 rounded-full border border-foreground/10 hover:bg-foreground/5 text-muted-foreground"
+                  className="px-3 py-1.5 rounded border border-foreground/10 hover:bg-foreground/5 text-foreground text-xs font-mono flex items-center gap-1.5 transition-colors"
                 >
-                  {r.status === "Active" ? "Pause Rule" : "Activate Rule"}
+                  {r.status === "Active" ? <><Pause className="w-3 h-3" /> Pause</> : <><Play className="w-3 h-3" /> Activate</>}
+                </button>
+                <button
+                  onClick={() => duplicateRule(r)}
+                  className="p-1.5 text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-foreground/10 rounded"
+                  title="Duplicate"
+                >
+                  <Copy className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => deleteRule(r.id)}
-                  className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                  className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors border border-transparent hover:border-red-500/10 rounded"
+                  title="Delete"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4 font-mono text-xs">
-              <div className="p-3 rounded-xl border border-foreground/10 bg-background/50 space-y-1">
-                <span className="text-muted-foreground uppercase text-[10px]">Rule Logic Condition</span>
-                <p className="text-foreground font-semibold">{r.condition}</p>
-              </div>
-              <div className="p-3 rounded-xl border border-foreground/10 bg-background/50 space-y-1">
-                <span className="text-muted-foreground uppercase text-[10px]">Automated Action</span>
-                <p className="text-emerald-600 dark:text-emerald-400 font-semibold">{r.action}</p>
-              </div>
+            <div className="grid md:grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm items-baseline">
+              <div className="text-xs font-mono text-muted-foreground font-semibold">WHEN</div>
+              <div className="text-foreground">{makeReadable(r.condition)}</div>
+              
+              <div className="text-xs font-mono text-muted-foreground font-semibold">THEN</div>
+              <div className="text-emerald-600 dark:text-emerald-500 font-medium">{r.action}</div>
             </div>
 
-            <div className="pt-2 border-t border-foreground/10 flex justify-between font-mono text-xs text-muted-foreground">
-              <span>Triggered: <strong className="text-foreground">{r.triggeredCount} times</strong></span>
-              <span>Last Evaluated: Just Now (Real-time Pipeline)</span>
+            {/* Advanced toggle */}
+            <div className="mt-4 pt-3 border-t border-foreground/10">
+              <button 
+                onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
+                className="text-[10px] font-mono flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Settings2 className="w-3 h-3" /> 
+                {expandedId === r.id ? "Hide Advanced Implementation" : "View Advanced Implementation"}
+              </button>
+              
+              {expandedId === r.id && (
+                <div className="mt-3 p-3 rounded-lg bg-foreground/3 border border-foreground/5 font-mono text-xs overflow-x-auto space-y-2">
+                  <div><span className="text-muted-foreground">Raw Condition:</span> <span className="text-foreground">{r.condition}</span></div>
+                  <div><span className="text-muted-foreground">Provider:</span> <span className="text-foreground">Internal Rule Engine v2</span></div>
+                  <div><span className="text-muted-foreground">Target Hook:</span> <span className="text-foreground">alert_webhook_3b9f2c</span></div>
+                </div>
+              )}
             </div>
           </div>
         ))}

@@ -36,7 +36,7 @@ export function IndirectCoverageDetectorView() {
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
           <span>Module 11</span>
           <span>•</span>
-          <span className="text-amber-500 font-bold">Innovation 2 & Diff 11 🔍</span>
+          <span className="text-amber-500 font-bold">Innovation 2 & Diff 11 </span>
           <span>•</span>
           <span className="text-foreground">Unbranded Signal Detection Engine</span>
         </div>
@@ -65,7 +65,7 @@ export function IndirectCoverageDetectorView() {
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 font-mono text-xs font-bold w-fit">
-                ⚡ {story.signalType}
+                 {story.signalType}
               </span>
               <span className="font-mono text-xs text-muted-foreground">{story.outlet} • {story.published}</span>
             </div>

@@ -157,7 +157,7 @@ export function CompanyIntelligenceProfileView({ onNavigate }: { onNavigate: (mo
               </span>
             </div>
             <div className="pt-2 border-t border-foreground/10 font-mono text-xs text-amber-600 dark:text-amber-400">
-              ⚡ {prod.signal}
+               {prod.signal}
             </div>
           </div>
         ))}

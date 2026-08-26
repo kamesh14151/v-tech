@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 const competitorData = [
   {
-    feature: "Semantic Discovery 🧠",
+    feature: "Semantic Discovery ",
     optimus: "Vector-based implicit topic & concept discovery",
     cisionOne: "Basic keyword boolean & taxonomy",
     brandwatch: "Query keyword rules only",
@@ -15,7 +15,7 @@ const competitorData = [
     isHighlight: true,
   },
   {
-    feature: "Indirect Coverage Detector 🔍",
+    feature: "Indirect Coverage Detector ",
     optimus: "AI detection of execs, products & unbranded signals",
     cisionOne: "No (Explicit brand keywords only)",
     brandwatch: "Limited topic tracking",
@@ -24,7 +24,7 @@ const competitorData = [
     isHighlight: true,
   },
   {
-    feature: "Personalized Morning Intelligence 🌅",
+    feature: "Personalized Morning Intelligence ",
     optimus: "Automated executive synthesis + audio digest",
     cisionOne: "Static daily email clips",
     brandwatch: "Scheduled email digest",
@@ -33,7 +33,7 @@ const competitorData = [
     isHighlight: true,
   },
   {
-    feature: "Contextual Validation 🎯",
+    feature: "Contextual Validation ",
     optimus: "Sentence-level focal vs off-hand mention parsing",
     cisionOne: "Basic document sentiment",
     brandwatch: "Document sentiment only",
@@ -42,7 +42,7 @@ const competitorData = [
     isHighlight: true,
   },
   {
-    feature: "Explainable Relevance Scoring 📊",
+    feature: "Explainable Relevance Scoring ",
     optimus: "Transparent 0-100 weight formula breakdown",
     cisionOne: "Opaque relevance tier",
     brandwatch: "Black-box reach index",
@@ -51,7 +51,7 @@ const competitorData = [
     isHighlight: false,
   },
   {
-    feature: "Coverage Gap Detector 🎯",
+    feature: "Coverage Gap Detector ",
     optimus: "Automated competitor story omission alerts",
     cisionOne: "Manual share of voice reports",
     brandwatch: "Share of voice charts",
@@ -60,7 +60,7 @@ const competitorData = [
     isHighlight: true,
   },
   {
-    feature: "Business Impact Score 💰",
+    feature: "Business Impact Score ",
     optimus: "EMV + Sentiment Risk + Stock correlation",
     cisionOne: "Estimated reach only",
     brandwatch: "Social impression metric",
@@ -69,7 +69,7 @@ const competitorData = [
     isHighlight: false,
   },
   {
-    feature: "Configurable Rule Engine ⚙️",
+    feature: "Configurable Rule Engine ️",
     optimus: "Real-time proximity, sentiment & multi-action rules",
     cisionOne: "Static notification alerts",
     brandwatch: "Alert rules",
@@ -78,7 +78,7 @@ const competitorData = [
     isHighlight: false,
   },
   {
-    feature: "Smart Paywall Extraction 📰",
+    feature: "Smart Paywall Extraction ",
     optimus: "High-speed multi-pass clean text extraction",
     cisionOne: "Snippet-only for paywalled sources",
     brandwatch: "Metadata only",

@@ -11,7 +11,7 @@ export function EntityContextValidationView() {
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
           <span>Module 13</span>
           <span>•</span>
-          <span className="text-amber-500 font-bold">Differentiator 13 🛡️</span>
+          <span className="text-amber-500 font-bold">Differentiator 13 ️</span>
           <span>•</span>
           <span className="text-foreground">Deep Entity Sentence Classifier</span>
         </div>

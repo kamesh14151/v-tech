@@ -40,7 +40,7 @@ export function ShareableReportsView() {
       <div className="p-8 rounded-2xl border border-foreground/10 bg-background/80 backdrop-blur-xl space-y-4 font-mono text-xs">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Active Shareable C-Suite Dashboard Link:</span>
-          <span className="text-emerald-500 font-bold">✓ Live Interactive Link Active</span>
+          <span className="text-emerald-500 font-bold"> Live Interactive Link Active</span>
         </div>
 
         <div className="flex gap-3">

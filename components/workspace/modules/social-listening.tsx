@@ -10,7 +10,7 @@ const socialPosts = [
     platform: "X (Twitter)",
     handle: "@TechAnalyst_Jane",
     author: "Jane Vance (Enterprise AI Analyst)",
-    content: "Just attended the Acme Robotics launch event. The zero-trust security architecture on TitanX Bot is a game changer for manufacturing automation! 🚀 #EnterpriseAI #Robotics",
+    content: "Just attended the Acme Robotics launch event. The zero-trust security architecture on TitanX Bot is a game changer for manufacturing automation!  #EnterpriseAI #Robotics",
     time: "45 mins ago",
     likes: 1420,
     reposts: 380,
@@ -81,7 +81,7 @@ export function SocialListeningView() {
             </div>
 
             <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/5 font-mono text-xs text-amber-600 dark:text-amber-400">
-              ⚡ Social-to-Earned Media Bridge: {post.bridgeStatus}
+               Social-to-Earned Media Bridge: {post.bridgeStatus}
             </div>
 
             <div className="pt-2 border-t border-foreground/10 flex justify-between font-mono text-xs text-muted-foreground">

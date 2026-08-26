@@ -132,7 +132,7 @@ export function HeroSection({ onOpenWorkspace }: { onOpenWorkspace?: () => void 
               onClick={onOpenWorkspace}
               className="h-14 px-8 text-base rounded-full border-foreground/20 hover:bg-foreground/5 font-mono text-xs"
             >
-              ⚡ Explore 15 Modules
+               Explore 15 Modules
             </Button>
           </div>
         </div>

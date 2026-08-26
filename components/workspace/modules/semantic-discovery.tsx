@@ -21,7 +21,7 @@ export function SemanticDiscoveryView() {
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
           <span>Module 6</span>
           <span>•</span>
-          <span className="text-emerald-500 font-bold">Requirement 1 🧠</span>
+          <span className="text-emerald-500 font-bold">Requirement 1 </span>
           <span>•</span>
           <span className="text-foreground">Vector Semantic Search Engine</span>
         </div>
@@ -67,7 +67,7 @@ export function SemanticDiscoveryView() {
           </div>
 
           <div className="text-emerald-500 font-semibold">
-            ✓ 173 Implicit Articles Discovered
+             173 Implicit Articles Discovered
           </div>
         </div>
       </div>

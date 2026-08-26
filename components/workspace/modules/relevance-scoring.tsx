@@ -21,7 +21,7 @@ export function RelevanceScoringView() {
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
           <span>Module 9</span>
           <span>•</span>
-          <span className="text-amber-500 font-bold">Differentiator 12 📊</span>
+          <span className="text-amber-500 font-bold">Differentiator 12 </span>
           <span>•</span>
           <span className="text-foreground">Transparent Priority & Relevance Model</span>
         </div>
@@ -40,7 +40,7 @@ export function RelevanceScoringView() {
             <span className="text-xl font-mono text-muted-foreground">/ 100 Points</span>
           </div>
           <p className="text-xs font-mono text-emerald-500 font-semibold">
-            ✓ Priority Level: Executive Briefing Threshold Met (&gt;90 Points)
+             Priority Level: Executive Briefing Threshold Met (&gt;90 Points)
           </p>
         </div>
 

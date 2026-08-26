@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 import {
   Building2,
   Newspaper,
@@ -26,152 +27,124 @@ import {
   Globe,
   Cpu,
   ShieldAlert,
-  Share2
+  Share2,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+interface WorkspaceUser {
+  id: string;
+  name: string;
+  email: string;
+  image: string;
+}
 
 // Import all module views
 import { LoginWorkspaceView } from "./modules/login-workspace";
 import { CompanyOnboardingView } from "./modules/company-onboarding";
 import { CompanyIntelligenceProfileView } from "./modules/company-intelligence-profile";
-import { NewsCollectionView } from "./modules/news-collection";
-import { ArticleExtractionView } from "./modules/article-extraction";
-import { SemanticDiscoveryView } from "./modules/semantic-discovery";
-import { ContextualValidationView } from "./modules/contextual-validation";
-import { RuleEngineView } from "./modules/rule-engine";
-import { RelevanceScoringView } from "./modules/relevance-scoring";
 import { ExecutiveDashboardView } from "./modules/executive-dashboard";
-import { IndirectCoverageDetectorView } from "./modules/indirect-coverage-detector";
-import { EntityContextValidationView } from "./modules/entity-context-validation";
-import { BusinessImpactScoreView } from "./modules/business-impact-score";
-import { CoverageGapDetectorView } from "./modules/coverage-gap-detector";
+import { RuleEngineView } from "./modules/rule-engine";
 import { MorningIntelligenceView } from "./modules/morning-intelligence";
-import { MediaOutreachCrmView } from "./modules/media-outreach-crm";
-import { AiVisibilityDashboardView } from "./modules/ai-visibility-dashboard";
-import { BrandRiskScoreView } from "./modules/brand-risk-score";
 import { NarrativeTrackingView } from "./modules/narrative-tracking";
-import { PressReleaseDistributionView } from "./modules/press-release-distribution";
-import { SocialListeningView } from "./modules/social-listening";
 import { ShareableReportsView } from "./modules/shareable-reports";
+import { IntelligenceFeedView } from "./modules/intelligence-feed";
+import { RiskRadarView } from "./modules/risk-radar";
+import { CompetitiveIntelligenceView } from "./modules/competitive-intelligence";
 
 export type WorkspaceModuleId =
+  | "dashboard"
+  | "feed"
+  | "discovery"
+  | "competitors"
+  | "media-social"
+  | "risk"
+  | "narrative"
+  | "morning"
+  | "shareable-reports"
+  | "rules"
   | "login"
   | "onboarding"
-  | "profile"
-  | "collection"
-  | "extraction"
-  | "semantic"
-  | "validation"
-  | "rules"
-  | "relevance"
-  | "dashboard"
-  | "indirect"
-  | "entity-context"
-  | "impact"
-  | "gap"
-  | "morning"
-  | "outreach"
-  | "ai-visibility"
-  | "brand-risk"
-  | "narrative"
-  | "press-release"
-  | "social-listening"
-  | "shareable-reports";
+  | "profile";
 
 interface ModuleConfig {
   id: WorkspaceModuleId;
   name: string;
-  category: "Overview & AI Visibility" | "Media Monitoring & Listening" | "AI Risk & Narrative Intelligence" | "Automations & Rules" | "PR Wire & Journalist Database" | "Executive Briefings & Reports";
+  category: "Overview" | "Intelligence" | "Monitoring" | "Risk & Opportunity" | "Reports" | "Automation" | "Admin";
   icon: any;
 }
 
 const MODULES: ModuleConfig[] = [
-  // Overview & AI Visibility
-  { id: "dashboard", name: "Executive Command Dashboard", category: "Overview & AI Visibility", icon: Gauge },
-  { id: "ai-visibility", name: "AI Visibility Dashboard (Trajaan AI)", category: "Overview & AI Visibility", icon: Cpu },
-  { id: "impact", name: "Business Impact Score", category: "Overview & AI Visibility", icon: PieChart },
-  { id: "login", name: "Auth & Workspace Switcher", category: "Overview & AI Visibility", icon: UserCheck },
-  { id: "onboarding", name: "Company Setup Wizard", category: "Overview & AI Visibility", icon: Building2 },
+  // Overview
+  { id: "dashboard", name: "Executive Dashboard", category: "Overview", icon: Gauge },
 
-  // Media Monitoring & Listening
-  { id: "collection", name: "News Collection Pipeline", category: "Media Monitoring & Listening", icon: Newspaper },
-  { id: "extraction", name: "Smart Paywall Extraction", category: "Media Monitoring & Listening", icon: FileText },
-  { id: "semantic", name: "Semantic Vector Discovery", category: "Media Monitoring & Listening", icon: Brain },
-  { id: "social-listening", name: "Social Listening (Brandwatch)", category: "Media Monitoring & Listening", icon: Share2 },
+  // Intelligence
+  { id: "feed", name: "Intelligence Feed", category: "Intelligence", icon: Newspaper },
+  { id: "discovery", name: "Search & Discovery", category: "Intelligence", icon: Search },
 
-  // AI Risk & Narrative Intelligence
-  { id: "brand-risk", name: "Brand Risk & Safety Scanner", category: "AI Risk & Narrative Intelligence", icon: ShieldAlert },
-  { id: "narrative", name: "Narrative Tracking Engine", category: "AI Risk & Narrative Intelligence", icon: Sparkles },
-  { id: "profile", name: "Company Intelligence Profile", category: "AI Risk & Narrative Intelligence", icon: Layers },
-  { id: "validation", name: "Contextual Boundary Validation", category: "AI Risk & Narrative Intelligence", icon: CheckCircle2 },
-  { id: "indirect", name: "Indirect Coverage Detector", category: "AI Risk & Narrative Intelligence", icon: Eye },
-  { id: "entity-context", name: "Entity Context Boundaries", category: "AI Risk & Narrative Intelligence", icon: Shield },
-  { id: "relevance", name: "Explainable Relevance Audit", category: "AI Risk & Narrative Intelligence", icon: TrendingUp },
+  // Monitoring
+  { id: "competitors", name: "Competitors", category: "Monitoring", icon: Building2 },
+  { id: "media-social", name: "Media & Social", category: "Monitoring", icon: Globe },
 
-  // Automations & Rules
-  { id: "rules", name: "Configurable Rule Engine", category: "Automations & Rules", icon: Sliders },
+  // Risk & Opportunity
+  { id: "risk", name: "Risk Radar", category: "Risk & Opportunity", icon: ShieldAlert },
+  { id: "narrative", name: "Narrative Tracking", category: "Risk & Opportunity", icon: Sparkles },
 
-  // PR Wire & Journalist Database
-  { id: "press-release", name: "Press Release Builder & Wire", category: "PR Wire & Journalist Database", icon: Send },
-  { id: "outreach", name: "Journalist CRM & Media DB", category: "PR Wire & Journalist Database", icon: Users },
-  { id: "gap", name: "Coverage Gap Detector", category: "PR Wire & Journalist Database", icon: Zap },
+  // Reports
+  { id: "morning", name: "Executive Briefings", category: "Reports", icon: Sun },
+  { id: "shareable-reports", name: "Reports", category: "Reports", icon: FileText },
 
-  // Executive Briefings & Reports
-  { id: "morning", name: "Morning Intelligence Briefing", category: "Executive Briefings & Reports", icon: Sun },
-  { id: "shareable-reports", name: "Shareable Live C-Suite Reports", category: "Executive Briefings & Reports", icon: Globe },
+  // Automation
+  { id: "rules", name: "Rules & Alerts", category: "Automation", icon: Sliders },
+
+  // Admin
+  { id: "login", name: "Workspace", category: "Admin", icon: Layers },
+  { id: "profile", name: "Company Settings", category: "Admin", icon: UserCheck },
 ];
 
-export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
-  const [activeModule, setActiveModule] = useState<WorkspaceModuleId>("dashboard");
-  const [currentWorkspace, setCurrentWorkspace] = useState("Global Enterprise Workspace");
-  const [currentRole, setCurrentRole] = useState("VP of Global Communications");
+export function WorkspaceLayout({
+  onClose,
+  user,
+  isNewUser = false,
+}: {
+  onClose?: () => void;
+  user?: WorkspaceUser;
+  isNewUser?: boolean;
+}) {
+  const [activeModule, setActiveModule] = useState<WorkspaceModuleId>(
+    isNewUser ? "onboarding" : "dashboard"
+  );
+  const [currentWorkspace, setCurrentWorkspace] = useState(
+    user?.name ? `${user.name}'s Workspace` : "Global Enterprise Workspace"
+  );
+  const [currentRole, setCurrentRole] = useState("VP of Communications");
 
   const renderActiveView = () => {
     switch (activeModule) {
+      case "dashboard":
+        return <ExecutiveDashboardView onNavigate={setActiveModule} />;
+      case "feed":
+      case "discovery":
+      case "media-social":
+        return <IntelligenceFeedView />;
+      case "competitors":
+        return <CompetitiveIntelligenceView />;
+      case "risk":
+        return <RiskRadarView />;
+      case "narrative":
+        return <NarrativeTrackingView />;
+      case "morning":
+        return <MorningIntelligenceView />;
+      case "shareable-reports":
+        return <ShareableReportsView />;
+      case "rules":
+        return <RuleEngineView />;
       case "login":
         return <LoginWorkspaceView currentWorkspace={currentWorkspace} setCurrentWorkspace={setCurrentWorkspace} currentRole={currentRole} setCurrentRole={setCurrentRole} onNavigate={setActiveModule} />;
       case "onboarding":
         return <CompanyOnboardingView onComplete={() => setActiveModule("profile")} />;
       case "profile":
         return <CompanyIntelligenceProfileView onNavigate={setActiveModule} />;
-      case "collection":
-        return <NewsCollectionView onNavigate={setActiveModule} />;
-      case "extraction":
-        return <ArticleExtractionView />;
-      case "semantic":
-        return <SemanticDiscoveryView />;
-      case "validation":
-        return <ContextualValidationView />;
-      case "rules":
-        return <RuleEngineView />;
-      case "relevance":
-        return <RelevanceScoringView />;
-      case "dashboard":
-        return <ExecutiveDashboardView onNavigate={setActiveModule} />;
-      case "indirect":
-        return <IndirectCoverageDetectorView />;
-      case "entity-context":
-        return <EntityContextValidationView />;
-      case "impact":
-        return <BusinessImpactScoreView />;
-      case "gap":
-        return <CoverageGapDetectorView />;
-      case "morning":
-        return <MorningIntelligenceView />;
-      case "outreach":
-        return <MediaOutreachCrmView onNavigate={setActiveModule} />;
-      case "ai-visibility":
-        return <AiVisibilityDashboardView />;
-      case "brand-risk":
-        return <BrandRiskScoreView />;
-      case "narrative":
-        return <NarrativeTrackingView />;
-      case "press-release":
-        return <PressReleaseDistributionView />;
-      case "social-listening":
-        return <SocialListeningView />;
-      case "shareable-reports":
-        return <ShareableReportsView />;
       default:
         return <ExecutiveDashboardView onNavigate={setActiveModule} />;
     }
@@ -192,7 +165,7 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
 
           <div className="h-4 w-px bg-foreground/10 hidden sm:block" />
 
-          {/* Quick Switcher */}
+          {/* Workspace Switcher */}
           <div className="hidden md:flex items-center gap-3 font-mono text-xs">
             <button
               onClick={() => setActiveModule("login")}
@@ -225,7 +198,28 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
             <span>Morning Briefing</span>
           </Button>
 
-          {onClose && (
+          {/* User Avatar & Sign Out */}
+          {user ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 rounded-full pl-1 pr-3 py-1">
+                {user.image ? (
+                  <img src={user.image} alt={user.name} className="w-6 h-6 rounded-full object-cover" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-foreground/20 flex items-center justify-center text-[10px] font-bold text-foreground">
+                    {user.name?.[0]?.toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-mono text-foreground/80 hidden md:block">{user.name?.split(" ")[0]}</span>
+              </div>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="p-1.5 rounded-full hover:bg-foreground/5 text-muted-foreground hover:text-foreground transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : onClose && (
             <Button variant="ghost" size="sm" onClick={onClose} className="rounded-full text-xs font-mono">
               Back to Site
             </Button>
@@ -238,7 +232,7 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
         {/* Clean Sidebar */}
         <aside className="w-64 border-r border-foreground/10 bg-muted/20 flex flex-col shrink-0 overflow-y-auto">
           <div className="p-4 space-y-6">
-            {(["Overview & AI Visibility", "Media Monitoring & Listening", "AI Risk & Narrative Intelligence", "Automations & Rules", "PR Wire & Journalist Database", "Executive Briefings & Reports"] as const).map((category) => (
+            {(["Overview", "Intelligence", "Monitoring", "Risk & Opportunity", "Reports", "Automation", "Admin"] as const).map((category) => (
               <div key={category} className="space-y-1">
                 <div className="px-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
                   {category}
@@ -267,11 +261,11 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
 
           <div className="mt-auto p-4 border-t border-foreground/10 bg-background/40 font-mono text-[11px] text-muted-foreground space-y-1">
             <div className="flex justify-between items-center text-foreground font-semibold">
-              <span>CisionOne Full AI Suite</span>
-              <span className="text-emerald-500 font-bold">100% Active</span>
+              <span>Optimus Platform</span>
+              <span className="text-emerald-500 font-bold">Operational</span>
             </div>
             <div className="text-[10px] text-muted-foreground/80">
-              Trajaan AI • Brand Risk • Brandwatch • PR Newswire
+              Intelligence Pipeline Active
             </div>
           </div>
         </aside>

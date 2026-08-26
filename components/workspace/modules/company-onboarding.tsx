@@ -1,20 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, User, Package, Check, ArrowRight, ArrowLeft, Shield, Sparkles } from "lucide-react";
+import { Building2, User, Package, Check, ArrowRight, ArrowLeft, Shield, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
 
 export function CompanyOnboardingView({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    companyName: "Acme Enterprise Robotics",
-    ticker: "ACME",
-    industry: "Autonomous Robotics & AI Infrastructure",
-    executives: "Jane Doe (CEO), Robert Smith (CTO), Marcus Vance (CFO)",
-    products: "TitanX Bot, Autonomous OS v4, CyberCore Edge",
-    aliases: "Acme Robotics, AcmeAI, Acme Corp",
-    competitors: "CisionOne Targets, Brandwatch Competitor A, Talkwalker Competitor B, Muck Rack Client C",
+    companyName: "",
+    ticker: "",
+    industry: "",
+    website: "",
+    description: "",
+    executives: "",
+    products: "",
+    aliases: "",
+    competitors: "",
+    keywords: "",
   });
+
+  const handleFinish = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: formData.companyName,
+          ticker: formData.ticker,
+          industry: formData.industry,
+          website: formData.website,
+          description: formData.description,
+          executives: formData.executives.split(",").map(e => e.trim()).filter(Boolean),
+          products: formData.products.split(",").map(p => p.trim()).filter(Boolean),
+          aliases: formData.aliases.split(",").map(a => a.trim()).filter(Boolean),
+          competitors: formData.competitors.split(",").map(c => c.trim()).filter(Boolean),
+          keywords: formData.keywords.split(",").map(k => k.trim()).filter(Boolean),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save profile");
+      onComplete();
+    } catch (err: any) {
+      setSaveError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -183,9 +218,13 @@ export function CompanyOnboardingView({ onComplete }: { onComplete: () => void }
               Next Step <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={onComplete} className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-full text-xs font-mono px-6">
-              Save Profile & Launch Platform <Check className="w-4 h-4 ml-2" />
+            <Button onClick={handleFinish} disabled={saving} className="bg-emerald-600 text-white hover:bg-emerald-700 rounded-full text-xs font-mono px-6">
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              {saving ? "Saving Profile..." : "Save Profile & Launch Platform"}
             </Button>
+          )}
+          {saveError && (
+            <p className="text-xs text-red-500 font-mono mt-2">{saveError}</p>
           )}
         </div>
       </div>

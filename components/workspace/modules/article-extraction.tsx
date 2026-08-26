@@ -64,7 +64,7 @@ According to CTO Robert Smith, "The integration of multi-modal AI into industria
           <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
             <span>Module 5</span>
             <span>•</span>
-            <span className="text-emerald-500 font-bold">Requirement 4 📰</span>
+            <span className="text-emerald-500 font-bold">Requirement 4 </span>
             <span>•</span>
             <span className="text-foreground">Smart Paywall-Resilient Extraction Engine</span>
           </div>

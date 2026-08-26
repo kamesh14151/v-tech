@@ -6,25 +6,25 @@ import { Brain, Sliders, CheckCircle2, FileText, Eye, Sun, ArrowRight } from "lu
 const features = [
   {
     number: "01",
-    title: "Requirement 1 — Semantic Discovery 🧠",
+    title: "Requirement 1 — Semantic Discovery ",
     description: "Vector-based semantic search & media similarity engine. Finds relevant coverage and implicit stories beyond simple keyword boolean strings.",
     visual: "ai",
   },
   {
     number: "02",
-    title: "Requirement 2 — Configurable Rule Engine ⚙️",
+    title: "Requirement 2 — Configurable Rule Engine ️",
     description: "Build custom boolean, proximity, sentiment, domain, and entity rules with automated action triggers (SMS, Slack, tag crisis).",
     visual: "collab",
   },
   {
     number: "03",
-    title: "Requirement 3 — Contextual Validation 🎯",
+    title: "Requirement 3 — Contextual Validation ",
     description: "Sentence-level boundary parser determining if entity mentions represent focal subject matter, supporting context, or passing footnotes.",
     visual: "security",
   },
   {
     number: "04",
-    title: "Requirement 4 — Smart Extraction 📰",
+    title: "Requirement 4 — Smart Extraction ",
     description: "Paywall-resilient multi-pass clean text extraction pulling author, publish timestamp, quotes, media assets, and structured entities.",
     visual: "deploy",
   },

@@ -32,7 +32,7 @@ export function CoverageGapDetectorView() {
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
           <span>Module 15</span>
           <span>•</span>
-          <span className="text-amber-500 font-bold">Differentiator 15 🎯</span>
+          <span className="text-amber-500 font-bold">Differentiator 15 </span>
           <span>•</span>
           <span className="text-foreground">Competitor Story Omission Detector</span>
         </div>

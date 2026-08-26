@@ -8,7 +8,7 @@ const navLinks = [
   { name: "Features", href: "#features" },
   { name: "Competitor Matrix", href: "#competitors" },
   { name: "How it works", href: "#how-it-works" },
-  { name: "Developers", href: "#developers" },
+  { name: "Pricing", href: "#pricing" },
 ];
 
 export function Navigation({ onOpenWorkspace }: { onOpenWorkspace?: () => void }) {
@@ -65,7 +65,7 @@ export function Navigation({ onOpenWorkspace }: { onOpenWorkspace?: () => void }
               onClick={onOpenWorkspace}
               className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline transition-colors"
             >
-              Workspace App ⚡
+              Workspace App 
             </button>
           </div>
 
@@ -133,7 +133,7 @@ export function Navigation({ onOpenWorkspace }: { onOpenWorkspace?: () => void }
               }}
               className="text-4xl font-display text-emerald-500 text-left"
             >
-              Workspace App ⚡
+              Workspace App 
             </button>
           </div>
           

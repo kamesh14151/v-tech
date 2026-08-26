@@ -138,19 +138,19 @@ export function MorningIntelligenceView() {
 
           <div className="grid md:grid-cols-3 gap-4 font-mono text-xs">
             <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-2">
-              <div className="font-bold text-emerald-600 dark:text-emerald-400">✓ Tier 1 Feature Story</div>
+              <div className="font-bold text-emerald-600 dark:text-emerald-400"> Tier 1 Feature Story</div>
               <div className="font-sans font-semibold text-foreground">TechCrunch Enterprise</div>
               <p className="text-[11px] text-muted-foreground">Highest reach story of the month. 98/100 score.</p>
             </div>
 
             <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2">
-              <div className="font-bold text-amber-600 dark:text-amber-400">⚡ Indirect Coverage Found</div>
+              <div className="font-bold text-amber-600 dark:text-amber-400"> Indirect Coverage Found</div>
               <div className="font-sans font-semibold text-foreground">EE Times Hardware</div>
               <p className="text-[11px] text-muted-foreground">Unbranded mention of Project Apex detected.</p>
             </div>
 
             <div className="p-4 rounded-xl border border-foreground/10 bg-background/50 space-y-2">
-              <div className="font-bold text-foreground">🎯 Competitor Gap Alert</div>
+              <div className="font-bold text-foreground"> Competitor Gap Alert</div>
               <div className="font-sans font-semibold text-foreground">VentureBeat AI</div>
               <p className="text-[11px] text-muted-foreground">Journalist Alex Rivera covered competitor; pitch ready.</p>
             </div>

@@ -86,7 +86,7 @@ export function AiVisibilityDashboardView() {
           <span className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-emerald-500" /> Monitored AI Consumer Prompt Query:
           </span>
-          <span className="text-emerald-500 font-bold">✓ 5 AI Search Models Audited</span>
+          <span className="text-emerald-500 font-bold"> 5 AI Search Models Audited</span>
         </div>
 
         <div className="flex gap-3">
