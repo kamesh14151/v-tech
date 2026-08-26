@@ -18,7 +18,7 @@ import { FooterSection } from "@/components/landing/footer-section";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 
 export default function Home() {
-  const [viewMode, setViewMode] = useState<"app" | "site">("app");
+  const [viewMode, setViewMode] = useState<"site" | "app">("site");
 
   if (viewMode === "app") {
     return <WorkspaceLayout onClose={() => setViewMode("site")} />;
