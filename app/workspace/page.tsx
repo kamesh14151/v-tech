@@ -10,6 +10,13 @@ export default async function WorkspacePage() {
     redirect("/login");
   }
 
+  // If the user has an old session with a UUID instead of an integer DB ID, force a re-login
+  // This prevents postgres crash "invalid input syntax for type integer: 'bc7e...'"
+  if (session.user.id && isNaN(Number(session.user.id))) {
+    // Redirect to a clear session or login route
+    redirect("/api/auth/signin");
+  }
+
   // Check if user has completed company onboarding
   const profiles = await query(
     "SELECT is_setup_complete FROM profiles WHERE user_id = $1 LIMIT 1",
