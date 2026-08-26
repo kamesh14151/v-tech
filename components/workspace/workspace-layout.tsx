@@ -23,7 +23,10 @@ import {
   Sparkles,
   Users,
   Send,
-  Globe
+  Globe,
+  Cpu,
+  ShieldAlert,
+  Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -44,6 +47,12 @@ import { BusinessImpactScoreView } from "./modules/business-impact-score";
 import { CoverageGapDetectorView } from "./modules/coverage-gap-detector";
 import { MorningIntelligenceView } from "./modules/morning-intelligence";
 import { MediaOutreachCrmView } from "./modules/media-outreach-crm";
+import { AiVisibilityDashboardView } from "./modules/ai-visibility-dashboard";
+import { BrandRiskScoreView } from "./modules/brand-risk-score";
+import { NarrativeTrackingView } from "./modules/narrative-tracking";
+import { PressReleaseDistributionView } from "./modules/press-release-distribution";
+import { SocialListeningView } from "./modules/social-listening";
+import { ShareableReportsView } from "./modules/shareable-reports";
 
 export type WorkspaceModuleId =
   | "login"
@@ -61,41 +70,55 @@ export type WorkspaceModuleId =
   | "impact"
   | "gap"
   | "morning"
-  | "outreach";
+  | "outreach"
+  | "ai-visibility"
+  | "brand-risk"
+  | "narrative"
+  | "press-release"
+  | "social-listening"
+  | "shareable-reports";
 
 interface ModuleConfig {
   id: WorkspaceModuleId;
   name: string;
-  category: "Overview" | "Media Monitoring" | "Intelligence & Analytics" | "Automations" | "PR Outreach & Reports";
+  category: "Overview & AI Visibility" | "Media Monitoring & Listening" | "AI Risk & Narrative Intelligence" | "Automations & Rules" | "PR Wire & Journalist Database" | "Executive Briefings & Reports";
   icon: any;
 }
 
 const MODULES: ModuleConfig[] = [
-  // Overview
-  { id: "dashboard", name: "Executive Dashboard", category: "Overview", icon: Gauge },
-  { id: "impact", name: "Business Impact Score", category: "Overview", icon: PieChart },
-  { id: "login", name: "Workspace & Auth", category: "Overview", icon: UserCheck },
-  { id: "onboarding", name: "Company Setup Wizard", category: "Overview", icon: Building2 },
+  // Overview & AI Visibility
+  { id: "dashboard", name: "Executive Command Dashboard", category: "Overview & AI Visibility", icon: Gauge },
+  { id: "ai-visibility", name: "AI Visibility Dashboard (Trajaan AI)", category: "Overview & AI Visibility", icon: Cpu },
+  { id: "impact", name: "Business Impact Score", category: "Overview & AI Visibility", icon: PieChart },
+  { id: "login", name: "Auth & Workspace Switcher", category: "Overview & AI Visibility", icon: UserCheck },
+  { id: "onboarding", name: "Company Setup Wizard", category: "Overview & AI Visibility", icon: Building2 },
 
-  // Media Monitoring
-  { id: "collection", name: "News Collection Feed", category: "Media Monitoring", icon: Newspaper },
-  { id: "extraction", name: "Smart Paywall Extraction", category: "Media Monitoring", icon: FileText },
-  { id: "semantic", name: "Semantic Vector Discovery", category: "Media Monitoring", icon: Brain },
+  // Media Monitoring & Listening
+  { id: "collection", name: "News Collection Pipeline", category: "Media Monitoring & Listening", icon: Newspaper },
+  { id: "extraction", name: "Smart Paywall Extraction", category: "Media Monitoring & Listening", icon: FileText },
+  { id: "semantic", name: "Semantic Vector Discovery", category: "Media Monitoring & Listening", icon: Brain },
+  { id: "social-listening", name: "Social Listening (Brandwatch)", category: "Media Monitoring & Listening", icon: Share2 },
 
-  // Intelligence & Analytics
-  { id: "profile", name: "Company Intelligence Profile", category: "Intelligence & Analytics", icon: Layers },
-  { id: "validation", name: "Contextual Boundary Validation", category: "Intelligence & Analytics", icon: CheckCircle2 },
-  { id: "indirect", name: "Indirect Coverage Detector", category: "Intelligence & Analytics", icon: Eye },
-  { id: "entity-context", name: "Entity Context Boundaries", category: "Intelligence & Analytics", icon: Shield },
-  { id: "relevance", name: "Explainable Relevance Audit", category: "Intelligence & Analytics", icon: TrendingUp },
+  // AI Risk & Narrative Intelligence
+  { id: "brand-risk", name: "Brand Risk & Safety Scanner", category: "AI Risk & Narrative Intelligence", icon: ShieldAlert },
+  { id: "narrative", name: "Narrative Tracking Engine", category: "AI Risk & Narrative Intelligence", icon: Sparkles },
+  { id: "profile", name: "Company Intelligence Profile", category: "AI Risk & Narrative Intelligence", icon: Layers },
+  { id: "validation", name: "Contextual Boundary Validation", category: "AI Risk & Narrative Intelligence", icon: CheckCircle2 },
+  { id: "indirect", name: "Indirect Coverage Detector", category: "AI Risk & Narrative Intelligence", icon: Eye },
+  { id: "entity-context", name: "Entity Context Boundaries", category: "AI Risk & Narrative Intelligence", icon: Shield },
+  { id: "relevance", name: "Explainable Relevance Audit", category: "AI Risk & Narrative Intelligence", icon: TrendingUp },
 
-  // Automations
-  { id: "rules", name: "Configurable Rule Engine", category: "Automations", icon: Sliders },
+  // Automations & Rules
+  { id: "rules", name: "Configurable Rule Engine", category: "Automations & Rules", icon: Sliders },
 
-  // PR Outreach & Reports
-  { id: "morning", name: "Morning Intelligence Briefing", category: "PR Outreach & Reports", icon: Sun },
-  { id: "outreach", name: "Journalist CRM & Database", category: "PR Outreach & Reports", icon: Users },
-  { id: "gap", name: "Coverage Gap Detector", category: "PR Outreach & Reports", icon: Zap },
+  // PR Wire & Journalist Database
+  { id: "press-release", name: "Press Release Builder & Wire", category: "PR Wire & Journalist Database", icon: Send },
+  { id: "outreach", name: "Journalist CRM & Media DB", category: "PR Wire & Journalist Database", icon: Users },
+  { id: "gap", name: "Coverage Gap Detector", category: "PR Wire & Journalist Database", icon: Zap },
+
+  // Executive Briefings & Reports
+  { id: "morning", name: "Morning Intelligence Briefing", category: "Executive Briefings & Reports", icon: Sun },
+  { id: "shareable-reports", name: "Shareable Live C-Suite Reports", category: "Executive Briefings & Reports", icon: Globe },
 ];
 
 export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
@@ -137,6 +160,18 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
         return <MorningIntelligenceView />;
       case "outreach":
         return <MediaOutreachCrmView onNavigate={setActiveModule} />;
+      case "ai-visibility":
+        return <AiVisibilityDashboardView />;
+      case "brand-risk":
+        return <BrandRiskScoreView />;
+      case "narrative":
+        return <NarrativeTrackingView />;
+      case "press-release":
+        return <PressReleaseDistributionView />;
+      case "social-listening":
+        return <SocialListeningView />;
+      case "shareable-reports":
+        return <ShareableReportsView />;
       default:
         return <ExecutiveDashboardView onNavigate={setActiveModule} />;
     }
@@ -176,7 +211,7 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search global news, entities, media contacts..."
+              placeholder="Search global news, AI queries, contacts..."
               className="pl-9 pr-4 py-1.5 text-xs font-mono rounded-full border border-foreground/10 bg-background/50 focus:bg-background focus:outline-none w-64 lg:w-80 transition-all"
             />
           </div>
@@ -203,7 +238,7 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
         {/* Clean Sidebar */}
         <aside className="w-64 border-r border-foreground/10 bg-muted/20 flex flex-col shrink-0 overflow-y-auto">
           <div className="p-4 space-y-6">
-            {(["Overview", "Media Monitoring", "Intelligence & Analytics", "Automations", "PR Outreach & Reports"] as const).map((category) => (
+            {(["Overview & AI Visibility", "Media Monitoring & Listening", "AI Risk & Narrative Intelligence", "Automations & Rules", "PR Wire & Journalist Database", "Executive Briefings & Reports"] as const).map((category) => (
               <div key={category} className="space-y-1">
                 <div className="px-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
                   {category}
@@ -232,11 +267,11 @@ export function WorkspaceLayout({ onClose }: { onClose?: () => void }) {
 
           <div className="mt-auto p-4 border-t border-foreground/10 bg-background/40 font-mono text-[11px] text-muted-foreground space-y-1">
             <div className="flex justify-between items-center text-foreground font-semibold">
-              <span>Competitor Engine Active</span>
-              <span className="text-emerald-500 font-bold">100%</span>
+              <span>CisionOne Full AI Suite</span>
+              <span className="text-emerald-500 font-bold">100% Active</span>
             </div>
             <div className="text-[10px] text-muted-foreground/80">
-              CisionOne • Brandwatch • Talkwalker • Muck Rack
+              Trajaan AI • Brand Risk • Brandwatch • PR Newswire
             </div>
           </div>
         </aside>
