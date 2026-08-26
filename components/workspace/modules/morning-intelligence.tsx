@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export function MorningIntelligenceView() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackTime, setPlaybackTime] = useState(14); // seconds out of 90
+  const [playbackTime, setPlaybackTime] = useState(14);
   const [deliverySuccess, setDeliverySuccess] = useState(false);
 
   const handleSendDigest = () => {
@@ -19,13 +19,6 @@ export function MorningIntelligenceView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-foreground/10 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
-            <span>Innovation 7</span>
-            <span>•</span>
-            <span className="text-amber-500 font-bold">MUST BUILD FEATURE 🌅</span>
-            <span>•</span>
-            <span className="text-foreground">Executive AI Briefing Engine</span>
-          </div>
           <h1 className="text-3xl font-display tracking-tight">Personalized Morning Intelligence</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Automated daily executive briefing synthesizing overnight media coverage, C-Suite quotes, competitor moves, and PR risk alerts.
@@ -57,7 +50,7 @@ export function MorningIntelligenceView() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center hover:scale-105 transition-transform shrink-0"
+            className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center hover:scale-105 transition-transform shrink-0 shadow-md"
           >
             {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
           </button>

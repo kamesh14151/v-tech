@@ -12,11 +12,6 @@ export function ExecutiveDashboardView({ onNavigate }: { onNavigate: (mod: any) 
       {/* Top Banner */}
       <div className="p-8 rounded-2xl border border-foreground/10 bg-background/80 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-2">
-            <span>Module 10</span>
-            <span>•</span>
-            <span className="text-foreground">Executive Command Dashboard</span>
-          </div>
           <h1 className="text-3xl font-display tracking-tight">Enterprise Media Intelligence Overview</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Real-time coverage analytics, competitor share of voice, business impact scores, and morning intelligence updates.
@@ -27,7 +22,7 @@ export function ExecutiveDashboardView({ onNavigate }: { onNavigate: (mod: any) 
           onClick={() => onNavigate("morning")}
           className="bg-amber-500 hover:bg-amber-600 text-white rounded-full font-mono text-xs gap-2 px-6 shadow-md"
         >
-          <Sun className="w-4 h-4" /> Generate Morning Intelligence Briefing
+          <Sun className="w-4 h-4 fill-current" /> Generate Morning Intelligence Briefing
         </Button>
       </div>
 
@@ -37,7 +32,7 @@ export function ExecutiveDashboardView({ onNavigate }: { onNavigate: (mod: any) 
           { label: "Total Articles Indexed", value: "2,840", change: "+14.2% this week", sub: "100% Paywall Extracted" },
           { label: "Share of Voice vs Competitors", value: "48.2%", change: "+6.8% vs CisionOne benchmark", sub: "Market Leader" },
           { label: "Business Impact Score", value: "94.8 / 100", change: "Est. Media Value: $1.82M", sub: "Financial Impact" },
-          { label: "Indirect Coverage Found", value: "312 Stories", change: "Innovation 2 Active", sub: "Unbranded Signals" },
+          { label: "Indirect Coverage Found", value: "312 Stories", change: "Unbranded Signal Match", sub: "Executive & Code-name Signals" },
         ].map((stat, idx) => (
           <div key={idx} className="p-5 rounded-2xl border border-foreground/10 bg-card hover:border-foreground/30 transition-all space-y-2">
             <div className="text-xs font-mono text-muted-foreground">{stat.label}</div>
@@ -100,9 +95,9 @@ export function ExecutiveDashboardView({ onNavigate }: { onNavigate: (mod: any) 
       {/* Quick Access Modules Grid */}
       <div className="grid md:grid-cols-3 gap-4">
         {[
-          { title: "Semantic Discovery 🧠", desc: "Requirement 1 — Vector search without exact keyword strings", mod: "semantic" },
-          { title: "Indirect Coverage 🔍", desc: "Innovation 2 — Detect unbranded C-Suite & product stories", mod: "indirect" },
-          { title: "Morning Intelligence 🌅", desc: "Innovation 7 — Generate personalized executive morning digest", mod: "morning" },
+          { title: "Semantic Discovery", desc: "Vector search without exact keyword strings", mod: "semantic" },
+          { title: "Indirect Coverage", desc: "Detect unbranded C-Suite & product stories", mod: "indirect" },
+          { title: "Morning Intelligence", desc: "Generate personalized executive morning digest", mod: "morning" },
         ].map((item, i) => (
           <div
             key={i}

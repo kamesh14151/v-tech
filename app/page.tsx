@@ -18,14 +18,18 @@ import { FooterSection } from "@/components/landing/footer-section";
 import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 
 export default function Home() {
-  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"app" | "site">("app");
+
+  if (viewMode === "app") {
+    return <WorkspaceLayout onClose={() => setViewMode("site")} />;
+  }
 
   return (
     <main className="relative min-h-screen overflow-x-hidden noise-overlay">
-      <Navigation onOpenWorkspace={() => setIsWorkspaceOpen(true)} />
-      <HeroSection onOpenWorkspace={() => setIsWorkspaceOpen(true)} />
+      <Navigation onOpenWorkspace={() => setViewMode("app")} />
+      <HeroSection onOpenWorkspace={() => setViewMode("app")} />
       <FeaturesSection />
-      <CompetitorMatrixSection onOpenWorkspace={() => setIsWorkspaceOpen(true)} />
+      <CompetitorMatrixSection onOpenWorkspace={() => setViewMode("app")} />
       <HowItWorksSection />
       <InfrastructureSection />
       <MetricsSection />
@@ -36,11 +40,6 @@ export default function Home() {
       <PricingSection />
       <CtaSection />
       <FooterSection />
-
-      {/* Interactive Workspace App Overlay */}
-      {isWorkspaceOpen && (
-        <WorkspaceLayout onClose={() => setIsWorkspaceOpen(false)} />
-      )}
     </main>
   );
 }
