@@ -89,6 +89,8 @@ export function RiskRadarView() {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sevFilter, setSevFilter] = useState<"all" | Severity>("all");
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   const fetchRisks = useCallback(async () => {
     setLoading(true);
@@ -113,6 +115,8 @@ export function RiskRadarView() {
 
   useEffect(() => { fetchRisks(); }, [fetchRisks]);
 
+  useEffect(() => { setPage(1); }, [sevFilter]);
+
   const counts = {
     critical: signals.filter(s => s.severity === "critical").length,
     high: signals.filter(s => s.severity === "high").length,
@@ -120,6 +124,8 @@ export function RiskRadarView() {
   };
 
   const filtered = sevFilter === "all" ? signals : signals.filter(s => s.severity === sevFilter);
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedFiltered = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -190,7 +196,7 @@ export function RiskRadarView() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((signal) => {
+          {paginatedFiltered.map((signal) => {
             const cfg = SEV_CONFIG[signal.severity];
             const Icon = cfg.icon;
             const isOpen = expanded === signal.id;
@@ -250,6 +256,28 @@ export function RiskRadarView() {
             <div className="text-center py-16 text-muted-foreground font-mono text-sm">
               <ShieldAlert className="w-10 h-10 mx-auto mb-3 opacity-20" />
               No risk signals detected at this severity level.
+            </div>
+          )}
+
+          {totalPages > 1 && !loading && (
+            <div className="flex items-center justify-between pt-4 pb-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-full border border-foreground/10 text-xs font-mono disabled:opacity-50 hover:bg-foreground/5 transition-colors text-foreground"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-mono text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-full border border-foreground/10 text-xs font-mono disabled:opacity-50 hover:bg-foreground/5 transition-colors text-foreground"
+              >
+                Next
+              </button>
             </div>
           )}
         </div>
