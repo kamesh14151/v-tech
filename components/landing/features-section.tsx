@@ -5,26 +5,44 @@ import { useEffect, useRef, useState } from "react";
 const features = [
   {
     number: "01",
-    title: "Instant Deployment",
-    description: "Push to production in seconds. Our edge network ensures your applications load instantly, anywhere in the world.",
-    visual: "deploy",
-  },
-  {
-    number: "02",
-    title: "AI-Native Workflows",
-    description: "Build intelligent applications with built-in AI capabilities. From inference to training, everything scales automatically.",
+    title: "Semantic Discovery",
+    description: "Find relevant company coverage beyond exact keywords by understanding meaning, business context, industry, products, geography, and topics.",
     visual: "ai",
   },
   {
+    number: "02",
+    title: "Configurable Rule Engine",
+    description: "Define the rules that matter to your organization. Tune relevance, relationship types, priority thresholds, and alert behavior without changing the workflow.",
+    visual: "deploy",
+  },
+  {
     number: "03",
-    title: "Real-time Collaboration",
-    description: "Work together seamlessly. Live preview, instant feedback, and version control that actually makes sense.",
-    visual: "collab",
+    title: "Contextual Validation",
+    description: "Validate every signal against the company intelligence profile so analysts can distinguish meaningful business relevance from surface-level mentions.",
+    visual: "security",
   },
   {
     number: "04",
-    title: "Enterprise Security",
-    description: "Bank-grade encryption, SOC 2 compliance, and granular access controls. Your data stays yours.",
+    title: "Smart Extraction",
+    description: "Extract companies, competitors, products, regulation, geography, topics, relationships, confidence, and business impact from every article.",
+    visual: "collab",
+  },
+  {
+    number: "05",
+    title: "Company Intelligence Profile",
+    description: "Build a living profile of the company, its market, products, competitors, and strategic priorities to make every discovery more precise.",
+    visual: "ai",
+  },
+  {
+    number: "06",
+    title: "Indirect Coverage Detector",
+    description: "Detect important stories that never name the company directly, revealing regulatory, competitor, and industry signals that keyword monitoring misses.",
+    visual: "deploy",
+  },
+  {
+    number: "07",
+    title: "Personalized Morning Intelligence",
+    description: "Start each day with a prioritized intelligence brief that explains what changed, why it matters, and which stories require immediate attention.",
     visual: "security",
   },
 ];
@@ -323,7 +341,7 @@ export function FeaturesSection() {
         <div className="mb-16 lg:mb-24">
           <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
             <span className="w-8 h-px bg-foreground/30" />
-            Capabilities
+            Intelligence capabilities
           </span>
           <h2
             className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${
