@@ -173,7 +173,7 @@ export default function LoginPage() {
         </section>
 
         <aside className="relative hidden w-1/2 overflow-hidden bg-[#0b3b46] lg:block">
-          <Image src="/login-portrait.png" alt="Stylish portrait with headphones and sunglasses" fill priority className="object-cover" sizes="50vw" />
+          <Image src="/login-portrait.jpeg" alt="Login portrait" fill priority className="object-cover" sizes="50vw" />
           <div className="absolute inset-x-6 bottom-6 rounded-2xl bg-white/95 p-5 backdrop-blur-sm">
             <p className="max-w-[360px] text-sm leading-6 text-[#202020]">Modern tools for turning ambitious ideas into something real, from first thought to final launch.</p>
             <div className="mt-5 flex items-center justify-between text-xs font-medium text-[#6d6d6d]">
