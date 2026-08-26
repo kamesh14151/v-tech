@@ -21,7 +21,9 @@ import {
   Bell,
   ChevronDown,
   Layers,
-  Sparkles
+  Sparkles,
+  Users,
+  Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -41,6 +43,7 @@ import { EntityContextValidationView } from "./modules/entity-context-validation
 import { BusinessImpactScoreView } from "./modules/business-impact-score";
 import { CoverageGapDetectorView } from "./modules/coverage-gap-detector";
 import { MorningIntelligenceView } from "./modules/morning-intelligence";
+import { MediaOutreachCrmView } from "./modules/media-outreach-crm";
 
 export type WorkspaceModuleId =
   | "login"
@@ -57,37 +60,43 @@ export type WorkspaceModuleId =
   | "entity-context"
   | "impact"
   | "gap"
-  | "morning";
+  | "morning"
+  | "outreach";
 
 interface ModuleConfig {
   id: WorkspaceModuleId;
   name: string;
   badge?: string;
-  category: "Core Flow" | "Requirements & Engine" | "Differentiators & Innovations";
+  category: "Command Center" | "Media Monitoring" | "AI Intelligence & Context" | "Automations & Rules" | "Outreach & Briefings";
   icon: any;
 }
 
 const MODULES: ModuleConfig[] = [
-  // Core Flow
-  { id: "dashboard", name: "10. Executive Dashboard", category: "Core Flow", icon: Gauge },
-  { id: "login", name: "1. Login & Workspace Switcher", category: "Core Flow", icon: UserCheck },
-  { id: "onboarding", name: "2. Company Onboarding", category: "Core Flow", icon: Building2 },
-  { id: "profile", name: "3. Company Intelligence Profile", badge: "Inno 1", category: "Core Flow", icon: Layers },
-  { id: "collection", name: "4. News Collection Pipeline", category: "Core Flow", icon: Newspaper },
+  // Command Center
+  { id: "dashboard", name: "Executive Command Dashboard", category: "Command Center", icon: Gauge },
+  { id: "impact", name: "Business Impact Score", badge: "Diff 14", category: "Command Center", icon: PieChart },
+  { id: "login", name: "Auth & Workspace Switcher", category: "Command Center", icon: UserCheck },
+  { id: "onboarding", name: "Company Setup Wizard", category: "Command Center", icon: Building2 },
 
-  // Requirements & Engine
-  { id: "extraction", name: "5. Smart Article Extraction", badge: "Req 4", category: "Requirements & Engine", icon: FileText },
-  { id: "semantic", name: "6. Semantic Discovery", badge: "Req 1", category: "Requirements & Engine", icon: Brain },
-  { id: "validation", name: "7. Contextual Validation", badge: "Req 3", category: "Requirements & Engine", icon: CheckCircle2 },
-  { id: "rules", name: "8. Configurable Rule Engine", badge: "Req 2", category: "Requirements & Engine", icon: Sliders },
-  { id: "relevance", name: "9. Priority & Relevance Scoring", category: "Requirements & Engine", icon: TrendingUp },
+  // Media Monitoring
+  { id: "collection", name: "News Collection Pipeline", category: "Media Monitoring", icon: Newspaper },
+  { id: "extraction", name: "Smart Article Extraction", badge: "Req 4", category: "Media Monitoring", icon: FileText },
+  { id: "semantic", name: "Semantic Discovery 🧠", badge: "Req 1", category: "Media Monitoring", icon: Brain },
 
-  // Differentiators & Innovations
-  { id: "morning", name: "Morning Intelligence Briefing", badge: "MUST BUILD", category: "Differentiators & Innovations", icon: Sun },
-  { id: "indirect", name: "11. Indirect Coverage Detector", badge: "Diff 11", category: "Differentiators & Innovations", icon: Eye },
-  { id: "entity-context", name: "13. Entity Context Validation", badge: "Diff 13", category: "Differentiators & Innovations", icon: Shield },
-  { id: "impact", name: "14. Business Impact Score", badge: "Diff 14", category: "Differentiators & Innovations", icon: PieChart },
-  { id: "gap", name: "15. Coverage Gap Detector", badge: "Diff 15", category: "Differentiators & Innovations", icon: Zap },
+  // AI Intelligence & Context
+  { id: "profile", name: "Company Intelligence Profile", badge: "Inno 1", category: "AI Intelligence & Context", icon: Layers },
+  { id: "validation", name: "Contextual Validation 🎯", badge: "Req 3", category: "AI Intelligence & Context", icon: CheckCircle2 },
+  { id: "indirect", name: "Indirect Coverage Detector", badge: "Inno 2", category: "AI Intelligence & Context", icon: Eye },
+  { id: "entity-context", name: "Entity Context Boundaries", badge: "Diff 13", category: "AI Intelligence & Context", icon: Shield },
+  { id: "relevance", name: "Explainable Relevance Score", badge: "Diff 12", category: "AI Intelligence & Context", icon: TrendingUp },
+
+  // Automations & Rules
+  { id: "rules", name: "Configurable Rule Engine ⚙️", badge: "Req 2", category: "Automations & Rules", icon: Sliders },
+
+  // Outreach & Briefings
+  { id: "morning", name: "Morning Intelligence Briefing", badge: "MUST BUILD", category: "Outreach & Briefings", icon: Sun },
+  { id: "outreach", name: "Journalist CRM & Media DB", category: "Outreach & Briefings", icon: Users },
+  { id: "gap", name: "Coverage Gap Detector", badge: "Diff 15", category: "Outreach & Briefings", icon: Zap },
 ];
 
 export function WorkspaceLayout({ onClose }: { onClose: () => void }) {
@@ -127,6 +136,8 @@ export function WorkspaceLayout({ onClose }: { onClose: () => void }) {
         return <CoverageGapDetectorView />;
       case "morning":
         return <MorningIntelligenceView />;
+      case "outreach":
+        return <MediaOutreachCrmView onNavigate={setActiveModule} />;
       default:
         return <ExecutiveDashboardView onNavigate={setActiveModule} />;
     }
@@ -134,7 +145,7 @@ export function WorkspaceLayout({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden noise-overlay">
-      {/* Workspace Navigation Bar */}
+      {/* CisionOne Style Navigation Header */}
       <header className="h-16 border-b border-foreground/10 bg-background/90 backdrop-blur-xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center gap-4">
           <Button
@@ -154,14 +165,14 @@ export function WorkspaceLayout({ onClose }: { onClose: () => void }) {
             <div className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center font-display font-bold text-sm">
               O
             </div>
-            <span className="font-display font-semibold tracking-tight text-lg">Optimus Intelligence</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-foreground/10 text-foreground/80 border border-foreground/10">
-              v2.5 Enterprise
+            <span className="font-display font-semibold tracking-tight text-lg">Optimus Enterprise</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-bold">
+              CisionOne Parity Engine
             </span>
           </div>
         </div>
 
-        {/* Center: Quick Switcher */}
+        {/* Quick Switcher */}
         <div className="hidden md:flex items-center gap-3 font-mono text-xs">
           <div className="flex items-center gap-2 bg-foreground/5 px-3 py-1.5 rounded-full border border-foreground/10">
             <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
@@ -179,7 +190,7 @@ export function WorkspaceLayout({ onClose }: { onClose: () => void }) {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search entities, rules, articles..."
+              placeholder="Search CisionOne database..."
               className="pl-9 pr-4 py-1.5 text-xs font-mono rounded-full border border-foreground/10 bg-background/50 focus:bg-background focus:outline-none w-48 lg:w-64 transition-all"
             />
           </div>
@@ -191,17 +202,17 @@ export function WorkspaceLayout({ onClose }: { onClose: () => void }) {
             className="rounded-full gap-2 border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 text-xs font-mono"
           >
             <Sun className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Morning Intelligence</span>
+            <span className="hidden sm:inline">Morning Briefing</span>
           </Button>
         </div>
       </header>
 
-      {/* Main Workspace Body */}
+      {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Navigation */}
+        {/* CisionOne Style Categorized Sidebar */}
         <aside className="w-72 border-r border-foreground/10 bg-muted/20 flex flex-col shrink-0 overflow-y-auto">
           <div className="p-4 space-y-6">
-            {(["Core Flow", "Requirements & Engine", "Differentiators & Innovations"] as const).map((category) => (
+            {(["Command Center", "Media Monitoring", "AI Intelligence & Context", "Automations & Rules", "Outreach & Briefings"] as const).map((category) => (
               <div key={category} className="space-y-1.5">
                 <div className="px-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold flex items-center justify-between">
                   <span>{category}</span>
@@ -246,7 +257,7 @@ export function WorkspaceLayout({ onClose }: { onClose: () => void }) {
           <div className="mt-auto p-4 border-t border-foreground/10 bg-background/40 font-mono text-[11px] text-muted-foreground space-y-2">
             <div className="flex justify-between items-center">
               <span>Competitors Benchmarked</span>
-              <span className="text-emerald-500 font-bold">4/4 Active</span>
+              <span className="text-emerald-500 font-bold">4/4 Parity Active</span>
             </div>
             <div className="text-[10px] text-muted-foreground/70">
               CisionOne • Brandwatch • Talkwalker • Muck Rack
