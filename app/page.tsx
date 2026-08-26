@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import { Navigation } from "@/components/landing/navigation";
 import { HeroSection } from "@/components/landing/hero-section";
 import { FeaturesSection } from "@/components/landing/features-section";
+import { CompetitorMatrixSection } from "@/components/landing/competitor-matrix-section";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { InfrastructureSection } from "@/components/landing/infrastructure-section";
 import { MetricsSection } from "@/components/landing/metrics-section";
@@ -11,13 +15,17 @@ import { TestimonialsSection } from "@/components/landing/testimonials-section";
 import { PricingSection } from "@/components/landing/pricing-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { FooterSection } from "@/components/landing/footer-section";
+import { WorkspaceLayout } from "@/components/workspace/workspace-layout";
 
 export default function Home() {
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+
   return (
     <main className="relative min-h-screen overflow-x-hidden noise-overlay">
-      <Navigation />
-      <HeroSection />
+      <Navigation onOpenWorkspace={() => setIsWorkspaceOpen(true)} />
+      <HeroSection onOpenWorkspace={() => setIsWorkspaceOpen(true)} />
       <FeaturesSection />
+      <CompetitorMatrixSection onOpenWorkspace={() => setIsWorkspaceOpen(true)} />
       <HowItWorksSection />
       <InfrastructureSection />
       <MetricsSection />
@@ -28,6 +36,11 @@ export default function Home() {
       <PricingSection />
       <CtaSection />
       <FooterSection />
+
+      {/* Interactive Workspace App Overlay */}
+      {isWorkspaceOpen && (
+        <WorkspaceLayout onClose={() => setIsWorkspaceOpen(false)} />
+      )}
     </main>
   );
 }

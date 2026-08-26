@@ -6,12 +6,12 @@ import { Menu, X } from "lucide-react";
 
 const navLinks = [
   { name: "Features", href: "#features" },
+  { name: "Competitor Matrix", href: "#competitors" },
   { name: "How it works", href: "#how-it-works" },
   { name: "Developers", href: "#developers" },
-  { name: "Pricing", href: "#pricing" },
 ];
 
-export function Navigation() {
+export function Navigation({ onOpenWorkspace }: { onOpenWorkspace?: () => void }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -45,34 +45,41 @@ export function Navigation() {
         >
           {/* Logo */}
           <a href="#" className="flex items-center gap-2 group">
-            <span className={`font-display tracking-tight transition-all duration-500 ${isScrolled ? "text-xl" : "text-2xl"}`}>Optimus</span>
+            <span className={`font-display tracking-tight transition-all duration-500 ${isScrolled ? "text-xl" : "text-2xl"}`}>Optimus PR</span>
             <span className={`text-muted-foreground font-mono transition-all duration-500 ${isScrolled ? "text-[10px] mt-0.5" : "text-xs mt-1"}`}>TM</span>
           </a>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-12">
+          <div className="hidden md:flex items-center gap-10">
             {navLinks.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
-                className="text-sm text-foreground/70 hover:text-foreground transition-colors duration-300 relative group"
+                className="text-sm text-foreground/70 hover:text-foreground transition-colors duration-300 relative group font-sans"
               >
                 {link.name}
                 <span className="absolute -bottom-1 left-0 w-0 h-px bg-foreground transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
+            <button
+              onClick={onOpenWorkspace}
+              className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline transition-colors"
+            >
+              Workspace App ⚡
+            </button>
           </div>
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
-            <a href="#" className={`text-foreground/70 hover:text-foreground transition-all duration-500 ${isScrolled ? "text-xs" : "text-sm"}`}>
+            <button onClick={onOpenWorkspace} className={`text-foreground/70 hover:text-foreground transition-all duration-500 ${isScrolled ? "text-xs" : "text-sm"}`}>
               Sign in
-            </a>
+            </button>
             <Button
               size="sm"
+              onClick={onOpenWorkspace}
               className={`bg-foreground hover:bg-foreground/90 text-background rounded-full transition-all duration-500 ${isScrolled ? "px-4 h-8 text-xs" : "px-6"}`}
             >
-              Start creating
+              Launch Workspace
             </Button>
           </div>
 
@@ -103,13 +110,13 @@ export function Navigation() {
       >
         <div className="flex flex-col h-full px-8 pt-28 pb-8">
           {/* Navigation Links */}
-          <div className="flex-1 flex flex-col justify-center gap-8">
+          <div className="flex-1 flex flex-col justify-center gap-6">
             {navLinks.map((link, i) => (
               <a
                 key={link.name}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-5xl font-display text-foreground hover:text-muted-foreground transition-all duration-500 ${
+                className={`text-4xl font-display text-foreground hover:text-muted-foreground transition-all duration-500 ${
                   isMobileMenuOpen 
                     ? "opacity-100 translate-y-0" 
                     : "opacity-0 translate-y-4"
@@ -119,6 +126,15 @@ export function Navigation() {
                 {link.name}
               </a>
             ))}
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                if (onOpenWorkspace) onOpenWorkspace();
+              }}
+              className="text-4xl font-display text-emerald-500 text-left"
+            >
+              Workspace App ⚡
+            </button>
           </div>
           
           {/* Bottom CTAs */}
@@ -132,15 +148,21 @@ export function Navigation() {
             <Button 
               variant="outline" 
               className="flex-1 rounded-full h-14 text-base"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                if (onOpenWorkspace) onOpenWorkspace();
+              }}
             >
               Sign in
             </Button>
             <Button 
               className="flex-1 bg-foreground text-background rounded-full h-14 text-base"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                if (onOpenWorkspace) onOpenWorkspace();
+              }}
             >
-              Start creating
+              Launch Workspace
             </Button>
           </div>
         </div>
