@@ -35,12 +35,18 @@ const features = [
   },
   {
     number: "06",
+    title: "Competitive Intelligence Benchmarking",
+    description: "Track CisionOne as the primary competitor alongside Brandwatch, Talkwalker, and Muck Rack to compare coverage, messaging, market movement, and strategic signals.",
+    visual: "collab",
+  },
+  {
+    number: "07",
     title: "Indirect Coverage Detector",
     description: "Detect important stories that never name the company directly, revealing regulatory, competitor, and industry signals that keyword monitoring misses.",
     visual: "deploy",
   },
   {
-    number: "07",
+    number: "08",
     title: "Personalized Morning Intelligence",
     description: "Start each day with a prioritized intelligence brief that explains what changed, why it matters, and which stories require immediate attention.",
     visual: "security",
