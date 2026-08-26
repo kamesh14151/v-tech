@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
-  { name: "Features", href: "#features" },
-  { name: "Competitor Matrix", href: "#competitors" },
-  { name: "How it works", href: "#how-it-works" },
-  { name: "Pricing", href: "#pricing" },
+  { name: "Features", href: "/#features" },
+  { name: "Competitor Matrix", href: "/compare" },
+  { name: "How it works", href: "/#how-it-works" },
+  { name: "Pricing", href: "/#pricing" },
 ];
 
 export function Navigation({ onOpenWorkspace }: { onOpenWorkspace?: () => void }) {

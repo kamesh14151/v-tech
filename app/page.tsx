@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/landing/navigation";
 import { HeroSection } from "@/components/landing/hero-section";
 import { FeaturesSection } from "@/components/landing/features-section";
-import { CompetitorMatrixSection } from "@/components/landing/competitor-matrix-section";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { InfrastructureSection } from "@/components/landing/infrastructure-section";
 import { MetricsSection } from "@/components/landing/metrics-section";
@@ -42,7 +41,6 @@ export default function Home() {
       <Navigation onOpenWorkspace={handleOpenWorkspace} />
       <HeroSection onOpenWorkspace={handleOpenWorkspace} />
       <FeaturesSection />
-      <CompetitorMatrixSection onOpenWorkspace={handleOpenWorkspace} />
       <HowItWorksSection />
       <InfrastructureSection />
       <MetricsSection />
