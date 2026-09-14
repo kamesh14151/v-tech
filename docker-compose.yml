@@ -1,31 +1,136 @@
 services:
-  postgres:
-    image: pgvector/pgvector:pg17
+  frontend:
+    build: .
+    ports:
+      - "3000:3000"
     environment:
-      POSTGRES_DB: newsintel
-      POSTGRES_USER: news
-      POSTGRES_PASSWORD: news
-    ports: ["5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
-  redis:
-    image: redis:7-alpine
-    ports: ["6379:6379"]
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-supersecretkey32charslong123456}
+      AUTH_SECRET: ${AUTH_SECRET:-supersecretkey32charslong123456}
+      AUTH_TRUST_HOST: "true"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/optimus
+      DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@postgres:5432/optimus
+      NEWS_API_KEY: ${NEWS_API_KEY:-}
+      GUARDIAN_API_KEY: ${GUARDIAN_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AGENT_BACKEND_URL: http://backend:8000
+      AGENT_SERVICE_TOKEN: ${AGENT_SERVICE_TOKEN:-}
+      REDIS_URL: redis://redis:6379/0
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
   backend:
     build: ./backend
-    env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://news:news@postgres:5432/newsintel
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      API_PREFIX: /v1
+      HOST: 0.0.0.0
+      PORT: 8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      NEWSAPI_KEY: ${NEWS_API_KEY:-}
+      GUARDIAN_API_KEY: ${GUARDIAN_API_KEY:-}
       REDIS_URL: redis://redis:6379/0
-    ports: ["8000:8000"]
-    depends_on: [postgres, redis]
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/optimus
+      AGENT_SERVICE_TOKEN: ${AGENT_SERVICE_TOKEN:-}
+      MAX_ARTICLES: ${MAX_ARTICLES:-60}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-20}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-3-5-haiku-latest}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-004}
+      VECTOR_SIMILARITY_THRESHOLD: ${VECTOR_SIMILARITY_THRESHOLD:-0.70}
+      GNEWS_API_KEY: ${GNEWS_API_KEY:-}
+      RULE_ENGINE_CRITICAL_THRESHOLD: ${RULE_ENGINE_CRITICAL_THRESHOLD:-9.0}
+      RULE_ENGINE_HIGH_THRESHOLD: ${RULE_ENGINE_HIGH_THRESHOLD:-7.5}
+      RULE_ENGINE_MEDIUM_THRESHOLD: ${RULE_ENGINE_MEDIUM_THRESHOLD:-5.0}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: optimus
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - optimus_pg:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./backend/db/002_production_schema.sql:/docker-entrypoint-initdb.d/002_production_schema.sql:ro
+      - ./lib/schema.sql:/docker-entrypoint-initdb.d/003_vtech_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d optimus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - optimus_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   worker:
     build: ./backend
-    env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+psycopg://news:news@postgres:5432/newsintel
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      NEWSAPI_KEY: ${NEWS_API_KEY:-}
+      GUARDIAN_API_KEY: ${GUARDIAN_API_KEY:-}
       REDIS_URL: redis://redis:6379/0
-    depends_on: [postgres, redis]
-    command: python worker.py
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/optimus
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MAX_ARTICLES: ${MAX_ARTICLES:-60}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
+      NOTIFICATION_EMAIL_TO: ${NOTIFICATION_EMAIL_TO:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SCHEDULED_ANALYSIS_CRON: ${SCHEDULED_ANALYSIS_CRON:-}
+      DEFAULT_ANALYSIS_QUERIES: ${DEFAULT_ANALYSIS_QUERIES:-}
+      PLAYWRIGHT_ENABLED: ${PLAYWRIGHT_ENABLED:-false}
+    command: ["arq", "app.worker.WorkerSettings"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
-  pgdata:
+  optimus_pg:
+  optimus_redis:

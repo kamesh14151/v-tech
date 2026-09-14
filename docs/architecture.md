@@ -1,51 +1,46 @@
-# Agent Architecture
+# Production Architecture
+
+The existing Next.js UI remains the presentation layer. The new Python service owns AI orchestration.
 
 ```text
-                 RSS / APIs / Websites
-                          |
-                          v
-                   Data Ingestion
-                          |
-                          v
-               +----------------------+
-               | Member 1             |
-               | Semantic Discovery   |
-               +----------+-----------+
-                          |
-                          v
-               +----------------------+
-               | Member 2             |
-               | Context Validation   |
-               +----------+-----------+
-                          |
-                          v
-               +----------------------+
-               | Member 3             |
-               | Story Clustering     |
-               +----------+-----------+
-                          |
-                          v
-               +----------------------+
-               | Member 4             |
-               | Importance Analysis  |
-               +----------+-----------+
-                          |
-                          v
-               +----------------------+
-               | Member 5             |
-               | Summary Agent        |
-               +----------+-----------+
-                          |
-                          v
-                    Rule Engine
-                          |
-                    +-----+-----+
-                    |           |
-                    v           v
-                Database      Alerts
-                    |
-                    v
-                Dashboard
+Browser
+  |
+  v
+Next.js /workspace
+  |
+  +--> /api/news --------------------> existing live article feed
+  |
+  +--> /api/analyze -----------------> Python Agent API
+                                          |
+                                          v
+                                       LangGraph
+                                          |
+              +-------------------------+-------------------------+
+              |                         |                         |
+          Discovery                Validation                Clustering
+              |                         |                         |
+              +-------------------------+-------------------------+
+                                        |
+                                   Importance
+                                        |
+                                     Summary
+                                        |
+                              structured report
+                                        |
+                                        v
+                              Existing dashboard
 ```
 
-The current codebase may contain helper functions for topic/impact analysis. Treat the five member-owned agents above as the five team boundaries. Member 4 owns the importance decision and may call helpers internally.
+## Why one LLM is still multi-agent
+All five agents may use the same Gemini model. Agent boundaries are defined by state, responsibility, prompt, tools, schemas, and tests — not by requiring five different model providers.
+
+## Production controls
+- Pydantic validation at every agent boundary.
+- Explicit request timeouts.
+- Deterministic IDs for articles/stories.
+- Structured agent trace for observability.
+- FastAPI liveness/readiness endpoints.
+- PostgreSQL + pgvector available for durable retrieval/semantic deduplication.
+- Redis available for future background jobs/caching.
+- Provider failures should degrade to deterministic behavior rather than fabricate evidence.
+- Secrets are environment variables only.
