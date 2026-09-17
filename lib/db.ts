@@ -3,12 +3,17 @@ import fs from "fs";
 import path from "path";
 
 const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
-const useSsl = process.env.NODE_ENV === "production" && !connectionString?.includes("localhost") && !connectionString?.includes("postgres:");
+const isLocalPostgres = connectionString?.includes("localhost") || connectionString?.includes("@postgres:");
+const useSsl = Boolean(
+  connectionString?.includes("neon.tech") ||
+  connectionString?.includes("sslmode=require") ||
+  (process.env.NODE_ENV === "production" && !isLocalPostgres)
+);
 
 const pool = new Pool({
   connectionString,
   ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
 });
 
 export { pool };

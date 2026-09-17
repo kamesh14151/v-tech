@@ -1,0 +1,47 @@
+services:
+  # 1. FastAPI Web API Service
+  - type: web
+    name: optimus-backend-api
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/live
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: API_PREFIX
+        value: /v1
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AGENT_SERVICE_TOKEN
+        sync: false
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+
+  # 2. ARQ Background Task Worker
+  - type: worker
+    name: optimus-backend-worker
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: arq app.worker.WorkerSettings
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AGENT_SERVICE_TOKEN
+        sync: false
+      - key: LLM_PROVIDER
+        value: gemini
