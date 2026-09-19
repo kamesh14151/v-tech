@@ -199,16 +199,17 @@ def _update_job_status(job_id: str, job_type: str, query: str, status: str,
 # ─── ARQ Worker Settings ────────────────────────────────────────────────────
 
 def _parse_redis_settings() -> RedisSettings:
-    """Parse redis URL into ARQ RedisSettings."""
+    """Parse redis URL into ARQ RedisSettings, supporting rediss:// (TLS) for Upstash."""
     redis_url = settings.arq_redis_url or settings.redis_url
-    # redis://host:port/db
     from urllib.parse import urlparse
     parsed = urlparse(redis_url)
+    use_ssl = parsed.scheme == 'rediss'
     return RedisSettings(
         host=parsed.hostname or 'localhost',
         port=parsed.port or 6379,
         database=int(parsed.path.lstrip('/') or '0'),
         password=parsed.password,
+        ssl=use_ssl,
     )
 
 
