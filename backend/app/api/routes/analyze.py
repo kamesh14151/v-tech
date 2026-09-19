@@ -48,7 +48,7 @@ async def analyze(req: AnalyzeRequest):
     if req.location and req.location not in ('Global (All)', 'Global'):
         q = f'{q} {req.location.replace("Within ", "").replace("(", "").replace(")", "").strip()}'
 
-    raw_articles = await collect_raw_articles(query=q, recency=req.recency)
+    raw_articles, source_breakdown = await collect_raw_articles(query=q, recency=req.recency)
 
     # ── Score source reliability ──────────────────────────────────────
     score_articles(raw_articles)
@@ -290,4 +290,6 @@ async def analyze(req: AnalyzeRequest):
         'discoveredArticles': discovered_count,
         'relevantArticles': relevant_count,
         'noiseFilteredPercent': noise_filtered,
+        'sourceBreakdown': source_breakdown,
+        'sourcesCount': len(source_breakdown),
     }

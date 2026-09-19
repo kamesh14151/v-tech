@@ -19,29 +19,59 @@ from app.ingestion.metadata import normalize_source_name, parse_iso_date
 
 log = logging.getLogger(__name__)
 
-# ─── Live RSS Feed Catalogue (15 Verified Real Feeds) ───────────────────────
+# ─── Live RSS Feed Catalogue (35+ Verified Real Feeds) ──────────────────────
 RSS_FEEDS = [
-    # General / Wire
-    ("BBC News", "http://feeds.bbci.co.uk/news/rss.xml"),
-    ("Reuters Top News", "https://feeds.reuters.com/reuters/topNews"),
-    ("Reuters Technology", "https://feeds.reuters.com/reuters/technologyNews"),
-    ("Reuters Business", "https://feeds.reuters.com/reuters/businessNews"),
-    # Technology
-    ("TechCrunch", "https://techcrunch.com/feed/"),
-    ("The Verge", "https://www.theverge.com/rss/index.xml"),
-    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
-    ("Wired", "https://www.wired.com/feed/rss"),
-    # Business & Finance
-    ("CNBC", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
-    ("Forbes Technology", "https://www.forbes.com/technology/feed/"),
-    # India & Regional
-    ("The Hindu", "https://www.thehindu.com/news/feeder/default.rss"),
-    ("Economic Times", "https://economictimes.indiatimes.com/rssfeedstopstories.cms"),
-    ("NDTV", "https://feeds.feedburner.com/ndtvnews-top-stories"),
-    # Science & AI
+    # ── Wire Services / Breaking News ────────────────────────────────────────
+    ("BBC News",              "http://feeds.bbci.co.uk/news/rss.xml"),
+    ("BBC World",             "http://feeds.bbci.co.uk/news/world/rss.xml"),
+    ("Reuters Top News",      "https://feeds.reuters.com/reuters/topNews"),
+    ("Reuters Technology",    "https://feeds.reuters.com/reuters/technologyNews"),
+    ("Reuters Business",      "https://feeds.reuters.com/reuters/businessNews"),
+    ("AP News",               "https://feeds.apnews.com/rss/topnews"),
+    ("Al Jazeera",            "https://www.aljazeera.com/xml/rss/all.xml"),
+
+    # ── Technology ───────────────────────────────────────────────────────────
+    ("TechCrunch",            "https://techcrunch.com/feed/"),
+    ("The Verge",             "https://www.theverge.com/rss/index.xml"),
+    ("Ars Technica",          "https://feeds.arstechnica.com/arstechnica/index"),
+    ("Wired",                 "https://www.wired.com/feed/rss"),
     ("MIT Technology Review", "https://www.technologyreview.com/feed/"),
-    ("Hacker News", "https://hnrss.org/frontpage"),
+    ("VentureBeat",           "https://venturebeat.com/feed/"),
+    ("ZDNet",                 "https://www.zdnet.com/news/rss.xml"),
+    ("Engadget",              "https://www.engadget.com/rss.xml"),
+    ("9to5Google",            "https://9to5google.com/feed/"),
+
+    # ── AI & Machine Learning ─────────────────────────────────────────────────
+    ("Hacker News",           "https://hnrss.org/frontpage"),
+    ("AI News (aimagazine)",  "https://aimagazine.com/rss"),
+    ("DeepMind Blog",         "https://deepmind.google/blog/rss/"),
+
+    # ── Business & Finance ────────────────────────────────────────────────────
+    ("CNBC",                  "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+    ("Forbes Technology",     "https://www.forbes.com/technology/feed/"),
+    ("Fortune",               "https://fortune.com/feed/"),
+    ("Bloomberg Markets",     "https://feeds.bloomberg.com/markets/news.rss"),
+    ("MarketWatch",           "https://feeds.marketwatch.com/marketwatch/topstories/"),
+
+    # ── India & South Asia ────────────────────────────────────────────────────
+    ("The Hindu",             "https://www.thehindu.com/news/feeder/default.rss"),
+    ("Economic Times",        "https://economictimes.indiatimes.com/rssfeedstopstories.cms"),
+    ("ET Tech",               "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms"),
+    ("NDTV",                  "https://feeds.feedburner.com/ndtvnews-top-stories"),
+    ("Mint",                  "https://www.livemint.com/rss/news"),
+    ("Business Standard",     "https://www.business-standard.com/rss/home_page_top_stories.rss"),
+    ("Hindustan Times",       "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml"),
+
+    # ── Science & Research ───────────────────────────────────────────────────
+    ("Nature News",           "https://www.nature.com/subjects/technology/news.rss"),
+    ("Science Daily",         "https://www.sciencedaily.com/rss/all.xml"),
+    ("New Scientist",         "https://www.newscientist.com/feed/home/"),
+
+    # ── Crypto & Fintech ──────────────────────────────────────────────────────
+    ("CoinDesk",              "https://www.coindesk.com/arc/outboundfeeds/rss/"),
+    ("CryptoSlate",           "https://cryptoslate.com/feed/"),
 ]
+
 
 
 def _from_date(recency: str) -> str:
@@ -180,11 +210,11 @@ async def collect_rss_all() -> list[RawArticle]:
 async def collect_raw_articles(
     query: str = "",
     recency: str = "Last 24 Hours",
-) -> list[RawArticle]:
+) -> tuple[list[RawArticle], dict[str, int]]:
     """
     Collect real articles from all available sources, deduplicate,
-    and optionally enrich with Playwright scraping.
-    Returns deduplicated list of RawArticle objects.
+    and return both articles and a per-source breakdown count.
+    Returns: (deduplicated articles, {source_name: count})
     """
     async with httpx.AsyncClient(timeout=12.0) as client:
         na_task = collect_newsapi(client, query, recency)
@@ -199,7 +229,19 @@ async def collect_raw_articles(
             all_raw.extend(r)
 
     deduped = deduplicate_articles(all_raw)
-    log.info("Collected %d raw articles (%d unique after dedup)", len(all_raw), len(deduped))
+
+    # Build per-source breakdown
+    source_breakdown: dict[str, int] = {}
+    for art in deduped:
+        source_breakdown[art.source] = source_breakdown.get(art.source, 0) + 1
+    # Sort by count descending
+    source_breakdown = dict(sorted(source_breakdown.items(), key=lambda x: x[1], reverse=True))
+
+    log.info(
+        "Collected %d raw → %d unique across %d sources: %s",
+        len(all_raw), len(deduped), len(source_breakdown),
+        ", ".join(f"{s}({c})" for s, c in list(source_breakdown.items())[:10]),
+    )
 
     # Optional Playwright enrichment for articles with short/missing descriptions
     if settings.playwright_enabled:
@@ -209,4 +251,5 @@ async def collect_raw_articles(
         except Exception as exc:
             log.warning("Playwright enrichment failed (proceeding without): %s", exc)
 
-    return deduped
+    return deduped, source_breakdown
+

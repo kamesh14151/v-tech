@@ -48,7 +48,7 @@ async def run_analysis_task(ctx: dict, query: str, location: str = 'Global (All)
 
     try:
         # Collect
-        raw_articles = await collect_raw_articles(query=query, recency=recency)
+        raw_articles, source_breakdown = await collect_raw_articles(query=query, recency=recency)
         score_articles(raw_articles)
 
         # Pre-filter
