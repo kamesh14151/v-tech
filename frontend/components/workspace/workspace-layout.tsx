@@ -8,8 +8,10 @@ import {
   Mail, Sliders, Menu, GitBranch, Layers, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GoogleTranslateSelector } from "@/components/ui/google-translate";
 
 interface WorkspaceUser { id: string; name: string; email: string; image: string }
+
 
 import { ExecutiveDashboardView } from "./modules/executive-dashboard";
 import { RuleEngineView } from "./modules/rule-engine";
@@ -430,6 +432,9 @@ export function WorkspaceLayout({
         </form>
 
         <div className="flex items-center gap-2">
+          {/* Multi-Lingual Translation Selector */}
+          <GoogleTranslateSelector />
+
           {/* User Profile & Signout */}
           {user || session?.user ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -474,6 +479,7 @@ export function WorkspaceLayout({
           )}
         </form>
       </div>
+
 
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
