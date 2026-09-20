@@ -190,15 +190,27 @@
   }
 }
 
-/* Google Translate Clean Overrides */
-.goog-te-banner-frame,
-iframe.goog-te-banner-frame,
-.goog-te-balloon-frame,
+/* Google Translate 100% Popup & Tooltip Bypass Overrides */
 #goog-gt-tt,
-.goog-te-spinner-pos {
+.goog-te-banner-frame,
+.goog-te-balloon-frame,
+.goog-te-spinner-pos,
+.goog-tooltip,
+.goog-tooltip:hover,
+iframe.goog-te-banner-frame,
+iframe[id*=":1.container"],
+iframe[id*=":2.container"],
+.VIpgJd-yDtffd-Lg4t2b,
+.VIpgJd-yDtffd-Lg4t2b-sJu2Ub,
+.VIpgJd-yDtffd-v83fe-sJu2Ub-scStSetting,
+.VIpgJd-ZA16t-a9vfSc,
+div[id*="goog-gt-"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 body {
@@ -206,13 +218,10 @@ body {
   position: static !important;
 }
 
-.goog-tooltip,
-.goog-tooltip:hover {
-  display: none !important;
-}
-
 .goog-text-highlight {
   background-color: transparent !important;
   box-shadow: none !important;
+  border: none !important;
 }
+
 

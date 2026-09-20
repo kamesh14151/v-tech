@@ -49,6 +49,34 @@ export function GoogleTranslateSelector() {
       }
     }
 
+    // MutationObserver to instantly remove/hide any Google Translate injected popups, tooltips, or banners
+    const observer = new MutationObserver(() => {
+      const selectors = [
+        "#goog-gt-tt",
+        ".goog-te-balloon-frame",
+        ".goog-te-banner-frame",
+        ".VIpgJd-yDtffd-Lg4t2b",
+        ".VIpgJd-yDtffd-Lg4t2b-sJu2Ub",
+        "iframe.goog-te-banner-frame",
+        "iframe[id*=':1.container']",
+        "iframe[id*=':2.container']",
+        "div[id*='goog-gt-']"
+      ];
+      selectors.forEach((sel) => {
+        document.querySelectorAll(sel).forEach((el) => {
+          (el as HTMLElement).style.setProperty("display", "none", "important");
+          (el as HTMLElement).style.setProperty("visibility", "hidden", "important");
+          (el as HTMLElement).style.setProperty("opacity", "0", "important");
+          (el as HTMLElement).style.setProperty("pointer-events", "none", "important");
+        });
+      });
+      if (document.body.style.top !== "0px") {
+        document.body.style.setProperty("top", "0px", "important");
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
     // Initialize Google Translate Element Script if not loaded
     if (!document.getElementById("google-translate-script")) {
       window.googleTranslateElementInit = () => {
@@ -70,7 +98,12 @@ export function GoogleTranslateSelector() {
       script.async = true;
       document.body.appendChild(script);
     }
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
+
 
   // Close dropdown on outside click
   useEffect(() => {
