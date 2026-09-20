@@ -357,6 +357,8 @@ export function AccountSettingsView({
                 );
               })}
             </div>
+          </div>
+
           {/* 5. Daily Email Digest Automation Section */}
           <div className="p-6 rounded-2xl border border-foreground/15 bg-card space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
