@@ -203,19 +203,32 @@ async def collect_google_news_rss(client: httpx.AsyncClient, query: str) -> list
     import urllib.parse
     clean_q = (
         query.replace("Within ", "")
-        .replace("(TN)", "Tamil Nadu")
-        .replace("(IN)", "India")
+        .replace("TN", "Tamil Nadu")
+        .replace("IN", "India")
         .replace("(", "")
         .replace(")", "")
         .strip()
     )
-    q_encoded = urllib.parse.quote(clean_q)
-    urls = [
-        ("Google News (India)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"),
-        ("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"),
-    ]
+    
+    # Generate search query variants to maximize live news hits
+    search_terms = [clean_q]
+    
+    # Extract primary topic word (e.g. "vijay") if query is combined like "vijay Tamil Nadu"
+    words = [w for w in clean_q.split() if w.lower() not in ("tamil", "nadu", "india", "global", "all")]
+    if words:
+        main_topic = " ".join(words)
+        if main_topic and main_topic not in search_terms:
+            search_terms.append(main_topic)
+            search_terms.append(f"{main_topic} news")
+
+    urls = []
+    for term in search_terms[:3]:
+        q_encoded = urllib.parse.quote(term)
+        urls.append(("Google News (India)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"))
+        urls.append(("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"))
+
     tasks = [
-        _fetch_single_rss(client, name, url, 25)
+        _fetch_single_rss(client, name, url, 20)
         for name, url in urls
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)

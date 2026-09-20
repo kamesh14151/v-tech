@@ -259,12 +259,15 @@ export function ExecutiveDashboardView({
     }
   }, [topicDomain, topicQuery, location, recency, onAnalysisComplete]);
 
+  // Initial load only — do NOT auto-trigger analysis on every input change.
+  // Analysis is triggered explicitly when the user clicks the "Run Fresh Analysis" button.
   useEffect(() => {
-    if (topicDomain) {
+    if (topicDomain && !report) {
       fetchDashboardData();
       generateReport(false);
     }
-  }, [topicDomain, topicQuery, location, recency, fetchDashboardData, generateReport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDownloadDocx = async () => {
     if (!report) return;
