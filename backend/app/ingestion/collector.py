@@ -209,8 +209,8 @@ async def _fetch_single_rss(client: httpx.AsyncClient, source_name: str, feed_ur
         return []
 
 
-async def collect_google_news_rss(client: httpx.AsyncClient, query: str) -> list[RawArticle]:
-    """Fetch live Google News RSS search results for specific topic/query."""
+async def collect_google_news_rss(client: httpx.AsyncClient, query: str, recency: str = "Last 24 Hours") -> list[RawArticle]:
+    """Fetch live Google News RSS search results for specific topic/query with time filters."""
     if not query or not query.strip():
         return []
     import urllib.parse
@@ -223,23 +223,36 @@ async def collect_google_news_rss(client: httpx.AsyncClient, query: str) -> list
         .strip()
     )
     
-    # Generate search query variants to maximize live news hits across English & Tamil
+    # Calculate Google News time parameter (tbs=qdr:h|d|w|m|y)
+    tbs_param = ""
+    r_lower = recency.lower()
+    if "hour" in r_lower:
+        tbs_param = "&tbs=qdr:h"
+    elif "24" in r_lower or "day" in r_lower:
+        tbs_param = "&tbs=qdr:d"
+    elif "week" in r_lower or "7" in r_lower:
+        tbs_param = "&tbs=qdr:w"
+    elif "month" in r_lower or "30" in r_lower:
+        tbs_param = "&tbs=qdr:m"
+    elif "year" in r_lower or "archive" in r_lower:
+        tbs_param = "&tbs=qdr:y"
+
     search_terms = [clean_q]
-    
     words = [w for w in clean_q.split() if w.lower() not in ("tamil", "nadu", "india", "global", "all")]
     if words:
         main_topic = " ".join(words)
         if main_topic and main_topic not in search_terms:
             search_terms.append(main_topic)
-            search_terms.append(f"{main_topic} cinema")
+            search_terms.append(f"{main_topic} AI")
+            search_terms.append(f"{main_topic} news updates")
             search_terms.append(f"{main_topic} Tamil Nadu")
 
     urls = []
-    for term in search_terms[:4]:
+    for term in search_terms[:5]:
         q_encoded = urllib.parse.quote(term)
-        urls.append(("Google News (India EN)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"))
-        urls.append(("Google News (Tamil TA)", f"https://news.google.com/rss/search?q={q_encoded}&hl=ta&gl=IN&ceid=IN:ta"))
-        urls.append(("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"))
+        urls.append(("Google News (India EN)", f"https://news.google.com/rss/search?q={q_encoded}{tbs_param}&hl=en-IN&gl=IN&ceid=IN:en"))
+        urls.append(("Google News (Tamil TA)", f"https://news.google.com/rss/search?q={q_encoded}{tbs_param}&hl=ta&gl=IN&ceid=IN:ta"))
+        urls.append(("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}{tbs_param}&hl=en-US&gl=US&ceid=US:en"))
 
     tasks = [
         _fetch_single_rss(client, name, url, 20)
@@ -397,7 +410,7 @@ async def collect_raw_articles(
         gd_task = collect_guardian(client, query, recency)
         gnews_api_task = collect_gnews_api(client, query, recency)
         rss_task = collect_rss_all(client)
-        gnews_task = collect_google_news_rss(client, query)
+        gnews_task = collect_google_news_rss(client, query, recency)
         web_task = collect_web_search_news(client, query)
 
         results = await asyncio.gather(na_task, gd_task, gnews_api_task, rss_task, gnews_task, web_task, return_exceptions=True)

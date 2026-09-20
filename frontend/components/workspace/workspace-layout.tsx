@@ -90,10 +90,14 @@ const QUICK_LOCATIONS = [
 ];
 
 const QUICK_RECENCY = [
-  "Last 24 Hours",
-  "Last 7 Days",
-  "Within 1 Month",
-  "Within 3 Months",
+  "Recent",
+  "Past hour",
+  "Past 24 hours",
+  "Past week",
+  "Past month",
+  "Past year",
+  "Archives",
+  "Custom range...",
 ];
 
 export function WorkspaceLayout({
@@ -112,10 +116,14 @@ export function WorkspaceLayout({
   const [topicDomain, setTopicDomain] = useState("Cricket & Sports");
   const [topicQuery, setTopicQuery] = useState("");
   const [location, setLocation] = useState("Within Tamil Nadu (TN)");
-  const [recency, setRecency] = useState("Last 24 Hours");
+  const [recency, setRecency] = useState("Past 24 hours");
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
+  const [isCustomDateModalOpen, setIsCustomDateModalOpen] = useState(false);
+  const [customFromDate, setCustomFromDate] = useState("2026-09-01");
+  const [customToDate, setCustomToDate] = useState("2026-09-20");
+
   const [modalSelectedDomain, setModalSelectedDomain] = useState("Cricket & Sports");
   const [modalCustomTopic, setModalCustomTopic] = useState("");
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
@@ -216,6 +224,11 @@ export function WorkspaceLayout({
   };
 
   const handleRecencySelect = async (newRec: string) => {
+    if (newRec === "Custom range...") {
+      setIsRecencyDropdownOpen(false);
+      setIsCustomDateModalOpen(true);
+      return;
+    }
     setRecency(newRec);
     setIsRecencyDropdownOpen(false);
     showToast(`Time set to ${newRec}`);
@@ -665,6 +678,95 @@ export function WorkspaceLayout({
               <p className="text-[11px] text-muted-foreground">
                 <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">Mandatory:</strong> Enter a specific topic, keyword, or breaking news title (at least 2 characters) for targeted media intelligence.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM DATE RANGE SELECTION POPUP MODAL (Google Tools Style with Apple Glassmorphism UI) */}
+      {isCustomDateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-md rounded-3xl border border-foreground/20 bg-background/90 backdrop-blur-xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-foreground/10">
+              <h3 className="text-sm font-mono font-semibold text-foreground flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-500" />
+                Customised date range
+              </h3>
+              <button
+                onClick={() => setIsCustomDateModalOpen(false)}
+                className="p-1 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 font-mono text-xs">
+              <div className="flex items-center gap-3">
+                <label className="w-12 text-muted-foreground font-semibold">From</label>
+                <input
+                  type="date"
+                  value={customFromDate}
+                  onChange={(e) => setCustomFromDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-foreground/20 bg-background text-foreground text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="w-12 text-muted-foreground font-semibold">To</label>
+                <input
+                  type="date"
+                  value={customToDate}
+                  onChange={(e) => setCustomToDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-foreground/20 bg-background text-foreground text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Interactive Month Calendar Preview Grid */}
+              <div className="p-3 rounded-2xl border border-foreground/10 bg-muted/20 space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-semibold px-1">
+                  <span>« September 2026 »</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Active Scope</span>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center text-[10px]">
+                  {["M", "T", "W", "T", "F", "S", "S"].map((d, idx) => (
+                    <span key={idx} className="text-muted-foreground font-bold">{d}</span>
+                  ))}
+                  {Array.from({ length: 30 }).map((_, idx) => {
+                    const dayNum = idx + 1;
+                    const isSelected = dayNum >= 14 && dayNum <= 20;
+                    return (
+                      <span
+                        key={dayNum}
+                        className={`py-1 rounded-lg ${
+                          isSelected ? "bg-blue-600 text-white font-bold" : "text-foreground hover:bg-foreground/10"
+                        }`}
+                      >
+                        {dayNum}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsCustomDateModalOpen(false)}
+                className="rounded-xl font-mono text-xs px-4"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const finalRec = `Custom: ${customFromDate} to ${customToDate}`;
+                  handleRecencySelect(finalRec);
+                  setIsCustomDateModalOpen(false);
+                }}
+                className="bg-foreground text-background hover:bg-foreground/85 rounded-xl font-mono text-xs font-semibold px-6 shadow-md"
+              >
+                Go
+              </Button>
             </div>
           </div>
         </div>

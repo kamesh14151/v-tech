@@ -8,17 +8,23 @@ import "./globals.css";
 const instrumentSans = Instrument_Sans({
   subsets: ["latin"],
   variable: "--font-instrument",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
 });
 
 const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   variable: "--font-instrument-serif",
+  display: "swap",
+  fallback: ["Georgia", "serif"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
+  display: "swap",
+  fallback: ["monospace"],
 });
 
 export const metadata: Metadata = {
