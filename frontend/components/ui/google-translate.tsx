@@ -58,6 +58,10 @@ export function GoogleTranslateSelector() {
         ".VIpgJd-yDtffd-Lg4t2b",
         ".VIpgJd-yDtffd-Lg4t2b-sJu2Ub",
         "iframe.goog-te-banner-frame",
+        "iframe.skiptranslate",
+        ".skiptranslate",
+        ".goog-te-gadget",
+        ".goog-te-banner",
         "iframe[id*=':1.container']",
         "iframe[id*=':2.container']",
         "div[id*='goog-gt-']"
@@ -68,14 +72,21 @@ export function GoogleTranslateSelector() {
           (el as HTMLElement).style.setProperty("visibility", "hidden", "important");
           (el as HTMLElement).style.setProperty("opacity", "0", "important");
           (el as HTMLElement).style.setProperty("pointer-events", "none", "important");
+          (el as HTMLElement).style.setProperty("height", "0px", "important");
         });
       });
       if (document.body.style.top !== "0px") {
         document.body.style.setProperty("top", "0px", "important");
+        document.body.style.setProperty("margin-top", "0px", "important");
+      }
+      if (document.documentElement.style.top !== "0px") {
+        document.documentElement.style.setProperty("top", "0px", "important");
+        document.documentElement.style.setProperty("margin-top", "0px", "important");
       }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+
 
     // Initialize Google Translate Element Script if not loaded
     if (!document.getElementById("google-translate-script")) {

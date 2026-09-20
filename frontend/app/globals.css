@@ -190,7 +190,7 @@
   }
 }
 
-/* Google Translate 100% Popup & Tooltip Bypass Overrides */
+/* Google Translate 100% Popup & Banner Bypass Overrides */
 #goog-gt-tt,
 .goog-te-banner-frame,
 .goog-te-balloon-frame,
@@ -198,6 +198,11 @@
 .goog-tooltip,
 .goog-tooltip:hover,
 iframe.goog-te-banner-frame,
+iframe.skiptranslate,
+.skiptranslate,
+body > .skiptranslate,
+.goog-te-gadget,
+.goog-te-banner,
 iframe[id*=":1.container"],
 iframe[id*=":2.container"],
 .VIpgJd-yDtffd-Lg4t2b,
@@ -213,8 +218,9 @@ div[id*="goog-gt-"] {
   height: 0 !important;
 }
 
-body {
+body, html {
   top: 0px !important;
+  margin-top: 0px !important;
   position: static !important;
 }
 
@@ -223,5 +229,6 @@ body {
   box-shadow: none !important;
   border: none !important;
 }
+
 
 
