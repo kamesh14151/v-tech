@@ -511,10 +511,7 @@ async def analyze(req: AnalyzeRequest):
     run_id = str(uuid.uuid4())
 
     # ── Collect raw articles from all sources ──────────────────────────
-    q = req.query
-    if req.location and req.location not in ('Global (All)', 'Global'):
-        q = f'{q} {req.location.replace("Within ", "").replace("(", "").replace(")", "").strip()}'
-
+    q = req.query.strip()
     raw_articles, source_breakdown = await collect_raw_articles(query=q, recency=req.recency)
 
     # If query-specific search yielded 0 raw articles, fallback to broad topic domain or all RSS feeds

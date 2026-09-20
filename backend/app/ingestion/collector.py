@@ -214,14 +214,9 @@ async def collect_google_news_rss(client: httpx.AsyncClient, query: str, recency
     if not query or not query.strip():
         return []
     import urllib.parse
-    clean_q = (
-        query.replace("Within ", "")
-        .replace("TN", "Tamil Nadu")
-        .replace("IN", "India")
-        .replace("(", "")
-        .replace(")", "")
-        .strip()
-    )
+    clean_q = query.strip()
+    for noise in ["Within ", "India (National)", "India National", "Tamil Nadu (TN)", "(TN)", "(National)", "Global (All)"]:
+        clean_q = clean_q.replace(noise, "").strip()
     
     # Calculate Google News time parameter (tbs=qdr:h|d|w|m|y)
     tbs_param = ""
@@ -238,24 +233,19 @@ async def collect_google_news_rss(client: httpx.AsyncClient, query: str, recency
         tbs_param = "&tbs=qdr:y"
 
     search_terms = [clean_q]
-    words = [w for w in clean_q.split() if w.lower() not in ("tamil", "nadu", "india", "global", "all")]
-    if words:
-        main_topic = " ".join(words)
-        if main_topic and main_topic not in search_terms:
-            search_terms.append(main_topic)
-            search_terms.append(f"{main_topic} AI")
-            search_terms.append(f"{main_topic} news updates")
-            search_terms.append(f"{main_topic} Tamil Nadu")
+    if " " in clean_q:
+        search_terms.append(f"{clean_q} AI")
+        search_terms.append(f"{clean_q} news")
+        search_terms.append(f"{clean_q} update")
 
     urls = []
-    for term in search_terms[:5]:
+    for term in search_terms[:4]:
         q_encoded = urllib.parse.quote(term)
         urls.append(("Google News (India EN)", f"https://news.google.com/rss/search?q={q_encoded}{tbs_param}&hl=en-IN&gl=IN&ceid=IN:en"))
-        urls.append(("Google News (Tamil TA)", f"https://news.google.com/rss/search?q={q_encoded}{tbs_param}&hl=ta&gl=IN&ceid=IN:ta"))
         urls.append(("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}{tbs_param}&hl=en-US&gl=US&ceid=US:en"))
 
     tasks = [
-        _fetch_single_rss(client, name, url, 20)
+        _fetch_single_rss(client, name, url, 25)
         for name, url in urls
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -354,21 +344,15 @@ async def collect_gnews_api(client: httpx.AsyncClient, query: str, recency: str)
     if not key or not query or not query.strip():
         return []
     import urllib.parse
-    clean_q = (
-        query.replace("Within ", "")
-        .replace("TN", "Tamil Nadu")
-        .replace("IN", "India")
-        .replace("(", "")
-        .replace(")", "")
-        .strip()
-    )
+    clean_q = query.strip()
+    for noise in ["Within ", "India (National)", "India National", "Tamil Nadu (TN)", "(TN)", "(National)", "Global (All)"]:
+        clean_q = clean_q.replace(noise, "").strip()
     try:
         r = await client.get(
             "https://gnews.io/api/v4/search",
             params={
                 "q": clean_q,
                 "lang": "en",
-                "country": "in",
                 "max": settings.max_articles_per_source,
                 "apikey": key,
             },
