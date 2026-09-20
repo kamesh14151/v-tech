@@ -163,7 +163,7 @@ async def _fetch_single_rss(client: httpx.AsyncClient, source_name: str, feed_ur
             feed_url,
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
             follow_redirects=True,
-            timeout=3.5,
+            timeout=2.0,
         )
         if r.status_code != 200:
             return []
@@ -262,7 +262,7 @@ async def collect_raw_articles(
     and return both articles and a per-source breakdown count.
     Returns: (deduplicated articles, {source_name: count})
     """
-    async with httpx.AsyncClient(timeout=6.0) as client:
+    async with httpx.AsyncClient(timeout=4.0) as client:
         na_task = collect_newsapi(client, query, recency)
         gd_task = collect_guardian(client, query, recency)
         rss_task = collect_rss_all(client)
