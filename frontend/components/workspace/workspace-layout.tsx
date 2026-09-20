@@ -109,13 +109,15 @@ export function WorkspaceLayout({
   const [globalQuery, setGlobalQuery] = useState("");
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [searchInput, setSearchInput] = useState("");
-  const [topicDomain, setTopicDomain] = useState("");
+  const [topicDomain, setTopicDomain] = useState("Cricket & Sports");
+  const [topicQuery, setTopicQuery] = useState("");
   const [location, setLocation] = useState("Within Tamil Nadu (TN)");
   const [recency, setRecency] = useState("Last 24 Hours");
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
-  const [modalCustomDomain, setModalCustomDomain] = useState("");
+  const [modalSelectedDomain, setModalSelectedDomain] = useState("Cricket & Sports");
+  const [modalCustomTopic, setModalCustomTopic] = useState("");
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
   const [isRecencyDropdownOpen, setIsRecencyDropdownOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -137,8 +139,13 @@ export function WorkspaceLayout({
         if (data.preferences) {
           if (data.preferences.topic_domain) {
             setTopicDomain(data.preferences.topic_domain);
+            setModalSelectedDomain(data.preferences.topic_domain);
           } else {
             setIsDomainModalOpen(true);
+          }
+          if (data.preferences.topic_query) {
+            setTopicQuery(data.preferences.topic_query);
+            setModalCustomTopic(data.preferences.topic_query);
           }
           if (data.preferences.location) setLocation(data.preferences.location);
           if (data.preferences.recency) setRecency(data.preferences.recency);
@@ -155,23 +162,24 @@ export function WorkspaceLayout({
     e?.preventDefault();
     const q = searchInput.trim();
     if (!q) return;
-    setGlobalQuery(q);
-    setTopicDomain(q);
+    setTopicQuery(q);
     setActiveModule("dashboard");
+    showToast(`Topic search: "${q}" in ${topicDomain}`);
   };
 
   const clearQuery = () => {
     setSearchInput("");
-    setGlobalQuery("");
+    setTopicQuery("");
     searchRef.current?.focus();
   };
 
-  const handleSaveDomainFromModal = async (selectedDomain: string) => {
-    const finalDomain = selectedDomain || modalCustomDomain.trim() || "Cricket & Sports";
+  const handleSaveDomainFromModal = async (selectedDomain: string, customTopic: string = "") => {
+    const finalDomain = selectedDomain || "Cricket & Sports";
+    const finalTopic = customTopic.trim();
     setTopicDomain(finalDomain);
-    setGlobalQuery(finalDomain);
+    setTopicQuery(finalTopic);
     setIsDomainModalOpen(false);
-    showToast(`Domain configured: ${finalDomain}`);
+    showToast(`Configured: ${finalDomain}${finalTopic ? ` | "${finalTopic}"` : ""}`);
 
     try {
       await fetch("/api/preferences", {
@@ -179,6 +187,7 @@ export function WorkspaceLayout({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topic_domain: finalDomain,
+          topic_query: finalTopic,
           location,
           recency,
           target_email: effectiveEmail,
@@ -222,7 +231,8 @@ export function WorkspaceLayout({
           <ExecutiveDashboardView
             onNavigate={setActiveModule as any}
             onOpenDomainModal={() => setIsDomainModalOpen(true)}
-            topicDomain={globalQuery || topicDomain}
+            topicDomain={topicDomain}
+            topicQuery={topicQuery}
             location={location}
             recency={recency}
             userEmail={effectiveEmail}
@@ -258,7 +268,8 @@ export function WorkspaceLayout({
           <ExecutiveDashboardView
             onNavigate={setActiveModule as any}
             onOpenDomainModal={() => setIsDomainModalOpen(true)}
-            topicDomain={globalQuery || topicDomain}
+            topicDomain={topicDomain}
+            topicQuery={topicQuery}
             location={location}
             recency={recency}
             userEmail={effectiveEmail}
@@ -558,10 +569,10 @@ export function WorkspaceLayout({
         </main>
       </div>
 
-      {/* TOPIC DOMAIN SELECTION POPUP MODAL */}
+      {/* TOPIC DOMAIN & NEWS QUERY SELECTION POPUP MODAL */}
       {isDomainModalOpen && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-3xl border border-foreground/20 bg-background p-5 sm:p-8 shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-2xl rounded-3xl border border-foreground/20 bg-background p-5 sm:p-8 shadow-2xl space-y-6 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
@@ -569,7 +580,7 @@ export function WorkspaceLayout({
                   Media Intelligence Scope
                 </span>
                 <h2 className="text-xl sm:text-2xl font-display font-semibold text-foreground">
-                  Select Your Topic Domain
+                  Select Domain & News Topic
                 </h2>
               </div>
               {topicDomain && (
@@ -582,58 +593,69 @@ export function WorkspaceLayout({
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Choose an industry domain below or type any custom query. Your dashboard, live discovery, and Anthropic/Perplexity-styled executive reports will synthesize for this topic.
-            </p>
-
-            {/* Grid of Domain Presets */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-sans">
-              {TOPIC_DOMAIN_OPTIONS.map((item) => (
-                <button
-                  key={item.name}
-                  type="button"
-                  onClick={() => handleSaveDomainFromModal(item.name)}
-                  className="p-3.5 sm:p-4 rounded-2xl border border-foreground/10 hover:border-foreground/30 bg-card hover:bg-foreground/3 text-left transition-all group flex flex-col justify-between space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{item.emoji}</span>
-                      <span className="font-semibold text-xs sm:text-sm text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                        {item.name}
-                      </span>
+            {/* Step 1: Select Industry Domain Category */}
+            <div className="space-y-2">
+              <label className="block text-xs font-mono text-foreground font-semibold flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] flex items-center justify-center font-bold">1</span>
+                Select Industry Domain:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-sans">
+                {TOPIC_DOMAIN_OPTIONS.map((item) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => setModalSelectedDomain(item.name)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all group flex flex-col justify-between space-y-1.5 ${
+                      modalSelectedDomain === item.name
+                        ? "border-emerald-500 bg-emerald-500/10 font-semibold shadow-sm"
+                        : "border-foreground/10 hover:border-foreground/30 bg-card hover:bg-foreground/3"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{item.emoji}</span>
+                        <span className={`font-semibold text-xs sm:text-sm ${modalSelectedDomain === item.name ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-foreground"}`}>
+                          {item.name}
+                        </span>
+                      </div>
+                      {modalSelectedDomain === item.name && (
+                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                      )}
                     </div>
-                    {topicDomain === item.name && (
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {item.desc}
-                  </p>
-                </button>
-              ))}
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Custom Domain Input */}
-            <div className="space-y-2 pt-2 border-t border-foreground/10">
-              <label className="block text-xs font-mono text-muted-foreground">
-                Or Type Custom Topic / Subject:
+            {/* Step 2: Custom News Title / Topic Query Entry */}
+            <div className="space-y-3 pt-3 border-t border-foreground/10">
+              <label className="block text-xs font-mono text-foreground font-semibold flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] flex items-center justify-center font-bold">2</span>
+                Enter Specific News Title / Topic (Optional):
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
-                  value={modalCustomDomain}
-                  onChange={(e) => setModalCustomDomain(e.target.value)}
-                  placeholder="e.g. Semiconductors, Space Tech, Real Estate..."
-                  className="flex-1 px-4 py-2 text-xs font-mono rounded-xl border border-foreground/15 bg-background focus:outline-none focus:border-foreground"
+                  value={modalCustomTopic}
+                  onChange={(e) => setModalCustomTopic(e.target.value)}
+                  placeholder="e.g. GOAT movie release, PayU IPO, IPL auction 2026..."
+                  className="flex-1 px-4 py-2.5 text-xs font-mono rounded-xl border border-foreground/20 bg-background focus:outline-none focus:border-emerald-500"
                 />
                 <Button
-                  onClick={() => handleSaveDomainFromModal(modalCustomDomain)}
-                  disabled={!modalCustomDomain.trim()}
-                  className="bg-foreground text-background hover:bg-foreground/85 rounded-xl font-mono text-xs font-semibold px-5 py-2.5"
+                  onClick={() => handleSaveDomainFromModal(modalSelectedDomain, modalCustomTopic)}
+                  disabled={!modalSelectedDomain}
+                  className="bg-foreground text-background hover:bg-foreground/85 rounded-xl font-mono text-xs font-semibold px-6 py-2.5 shadow-md gap-2"
                 >
-                  Confirm Domain
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Confirm Scope & Discover
                 </Button>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Tip: Leave the title/topic field empty to discover general breaking news across the selected <strong>{modalSelectedDomain}</strong> domain.
+              </p>
             </div>
           </div>
         </div>

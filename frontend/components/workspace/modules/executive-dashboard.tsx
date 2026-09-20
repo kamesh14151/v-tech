@@ -57,6 +57,7 @@ export function ExecutiveDashboardView({
   onNavigate,
   onOpenDomainModal,
   topicDomain = "",
+  topicQuery = "",
   location = "Within Tamil Nadu (TN)",
   recency = "Last 24 Hours",
   userEmail = "",
@@ -65,6 +66,7 @@ export function ExecutiveDashboardView({
   onNavigate?: (mod: string) => void;
   onOpenDomainModal?: () => void;
   topicDomain?: string;
+  topicQuery?: string;
   location?: string;
   recency?: string;
   userEmail?: string;
@@ -142,10 +144,11 @@ export function ExecutiveDashboardView({
 
   const fetchDashboardData = useCallback(async () => {
     if (!topicDomain) return;
+    const effectiveQuery = (topicQuery || topicDomain).trim();
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/news?topic_domain=${encodeURIComponent(topicDomain)}&location=${encodeURIComponent(location)}&recency=${encodeURIComponent(recency)}&pageSize=12`
+        `/api/news?q=${encodeURIComponent(effectiveQuery)}&topic_domain=${encodeURIComponent(topicDomain)}&location=${encodeURIComponent(location)}&recency=${encodeURIComponent(recency)}&pageSize=12`
       );
       const data = await res.json();
       setArticles(data.articles || []);
@@ -154,7 +157,7 @@ export function ExecutiveDashboardView({
     } finally {
       setLoading(false);
     }
-  }, [topicDomain, location, recency]);
+  }, [topicDomain, topicQuery, location, recency]);
 
   const loadPastReport = async (reportId: number) => {
     setReportLoading(true);
@@ -176,7 +179,8 @@ export function ExecutiveDashboardView({
   const generateReport = useCallback(async (forceFresh: boolean = false) => {
     if (!topicDomain) return;
 
-    const cacheKey = `optimus_report_${topicDomain}_${location}_${recency}`;
+    const effectiveQuery = (topicQuery || topicDomain).trim();
+    const cacheKey = `optimus_report_${topicDomain}_${topicQuery}_${location}_${recency}`;
 
     // If not forcing fresh, check database or localStorage cache first
     if (!forceFresh) {
@@ -208,8 +212,8 @@ export function ExecutiveDashboardView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          query: topicDomain,
-          topic_domain: topicDomain,
+          query: effectiveQuery,
+          topic_domain: topicDomain || effectiveQuery,
           location,
           recency,
         }),
@@ -246,14 +250,14 @@ export function ExecutiveDashboardView({
     } finally {
       setReportLoading(false);
     }
-  }, [topicDomain, location, recency, onAnalysisComplete]);
+  }, [topicDomain, topicQuery, location, recency, onAnalysisComplete]);
 
   useEffect(() => {
     if (topicDomain) {
       fetchDashboardData();
       generateReport(false);
     }
-  }, [topicDomain, location, recency, fetchDashboardData, generateReport]);
+  }, [topicDomain, topicQuery, location, recency, fetchDashboardData, generateReport]);
 
   const handleDownloadDocx = async () => {
     if (!report) return;
@@ -437,6 +441,13 @@ export function ExecutiveDashboardView({
             <span className="truncate max-w-36">{topicDomain}</span>
             <span className="text-[10px] text-muted-foreground underline ml-1">Change</span>
           </button>
+
+          {topicQuery && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 font-semibold text-[11px] sm:text-xs">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate max-w-44">Topic: "{topicQuery}"</span>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] sm:text-xs">
             <Globe className="w-3.5 h-3.5 shrink-0" />
