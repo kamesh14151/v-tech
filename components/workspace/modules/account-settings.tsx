@@ -73,10 +73,14 @@ export function AccountSettingsView({
   const [location, setLocation] = useState("Within Tamil Nadu (TN)");
   const [recency, setRecency] = useState("Last 24 Hours");
   const [targetEmail, setTargetEmail] = useState(session?.user?.email || "");
+  const [dailyDigestEnabled, setDailyDigestEnabled] = useState(true);
+  const [deliveryTime, setDeliveryTime] = useState("08:00");
   const [customDomainInput, setCustomDomainInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailMsg, setTestEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const isGmailLinked = targetEmail.includes("@gmail.com");
 
@@ -89,11 +93,38 @@ export function AccountSettingsView({
           setLocation(data.preferences.location || "Within Tamil Nadu (TN)");
           setRecency(data.preferences.recency || "Last 24 Hours");
           setTargetEmail(data.preferences.target_email || session?.user?.email || "");
+          setDailyDigestEnabled(data.preferences.daily_digest_enabled !== false);
+          setDeliveryTime(data.preferences.delivery_time || "08:00");
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [session?.user?.email]);
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true);
+    setTestEmailMsg(null);
+    try {
+      const res = await fetch("/api/digest/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail }),
+      });
+      const data = await res.json();
+      if (res.ok && data.status === "sent") {
+        setTestEmailMsg({ type: "success", text: `Test daily digest successfully sent to ${targetEmail}!` });
+      } else if (data.gmailComposeUrl) {
+        window.open(data.gmailComposeUrl, "_blank");
+        setTestEmailMsg({ type: "success", text: "Opened Gmail Compose window to send test digest." });
+      } else {
+        setTestEmailMsg({ type: "error", text: data.error || data.detail || "Could not send test email." });
+      }
+    } catch (err: any) {
+      setTestEmailMsg({ type: "error", text: err.message || "Failed to trigger test email." });
+    } finally {
+      setTestingEmail(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +142,8 @@ export function AccountSettingsView({
           location,
           recency,
           target_email: targetEmail.trim(),
+          daily_digest_enabled: dailyDigestEnabled,
+          delivery_time: deliveryTime,
         }),
       });
 
@@ -324,6 +357,72 @@ export function AccountSettingsView({
                 );
               })}
             </div>
+          {/* 5. Daily Email Digest Automation Section */}
+          <div className="p-6 rounded-2xl border border-foreground/15 bg-card space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-base font-display font-semibold text-foreground">
+                <Send className="w-4 h-4 text-emerald-500" />
+                5. Automated Daily Email Digest
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={dailyDigestEnabled}
+                    onChange={e => setDailyDigestEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+                <span className="text-xs font-mono font-semibold">
+                  {dailyDigestEnabled ? <span className="text-emerald-500">Enabled</span> : <span className="text-muted-foreground">Disabled</span>}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Automatically compiles & sends a customized intelligence briefing for your configured topic to <strong>{targetEmail}</strong> every morning.
+            </p>
+
+            <div className="grid sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs font-mono text-muted-foreground mb-1.5">
+                  Daily Delivery Schedule (UTC):
+                </label>
+                <select
+                  value={deliveryTime}
+                  onChange={e => setDeliveryTime(e.target.value)}
+                  className="w-full px-4 py-2 text-xs font-mono rounded-xl border border-foreground/15 bg-background focus:outline-none focus:border-foreground"
+                >
+                  <option value="06:00">06:00 AM UTC (11:30 AM IST)</option>
+                  <option value="08:00">08:00 AM UTC (01:30 PM IST) - Standard</option>
+                  <option value="12:00">12:00 PM UTC (05:30 PM IST)</option>
+                  <option value="18:00">06:00 PM UTC (11:30 PM IST)</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col justify-end">
+                <button
+                  type="button"
+                  onClick={handleTestEmail}
+                  disabled={testingEmail}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-semibold hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                >
+                  {testingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  Send Test Digest Email Now
+                </button>
+              </div>
+            </div>
+
+            {testEmailMsg && (
+              <div className={`p-3 rounded-xl border text-xs font-mono flex items-center gap-2 ${
+                testEmailMsg.type === "success"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+              }`}>
+                {testEmailMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                <span>{testEmailMsg.text}</span>
+              </div>
+            )}
           </div>
 
           {/* Save Bar */}

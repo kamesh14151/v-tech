@@ -21,6 +21,7 @@ from arq import cron
 from arq.connections import RedisSettings
 
 from app.core.config import settings
+from app.notifications.digest import send_daily_digests
 
 log = logging.getLogger(__name__)
 
@@ -216,8 +217,12 @@ def _parse_redis_settings() -> RedisSettings:
 def _build_cron_jobs():
     """Build list of cron jobs from settings."""
     jobs = []
+
+    # Daily digest — every day at 08:00 UTC
+    jobs.append(cron(send_daily_digests, hour={8}, minute={0}))
+
+    # Optional: configurable scheduled analysis
     if settings.scheduled_analysis_cron:
-        # Parse cron expression: "minute hour day month day_of_week"
         parts = settings.scheduled_analysis_cron.split()
         if len(parts) == 5:
             jobs.append(cron(
@@ -245,9 +250,9 @@ def _parse_cron_field(field: str):
 
 class WorkerSettings:
     """ARQ worker settings — used by `arq app.worker.WorkerSettings`."""
-    functions = [run_analysis_task]
-    cron_jobs = _build_cron_jobs()
+    functions  = [run_analysis_task, send_daily_digests]
+    cron_jobs  = _build_cron_jobs()
     redis_settings = _parse_redis_settings()
-    max_jobs = 3
-    job_timeout = 300  # 5 minutes per job
+    max_jobs   = 5
+    job_timeout = 600  # 10 min — digest can take longer
     health_check_interval = 60
