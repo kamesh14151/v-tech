@@ -6,11 +6,10 @@
 export async function backendFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const envUrl = process.env.AGENT_BACKEND_URL;
   const candidates: string[] = [];
-  // In single-container deployment, FastAPI runs on localhost:8000
+  if (envUrl) candidates.push(envUrl);
   candidates.push("http://localhost:8000");
   candidates.push("http://127.0.0.1:8000");
-  if (envUrl) candidates.push(envUrl);
-  candidates.push("http://backend:8000"); // fallback for docker-compose
+  candidates.push("http://backend:8000");
 
   const uniqueUrls = Array.from(new Set(candidates));
   let lastError: any = null;
