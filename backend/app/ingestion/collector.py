@@ -55,12 +55,25 @@ RSS_FEEDS = [
 
     # ── India & South Asia ────────────────────────────────────────────────────
     ("The Hindu",             "https://www.thehindu.com/news/feeder/default.rss"),
+    ("The Hindu Tamil",       "https://www.hindutamil.in/rss/feed.xml"),
     ("Economic Times",        "https://economictimes.indiatimes.com/rssfeedstopstories.cms"),
     ("ET Tech",               "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms"),
     ("NDTV",                  "https://feeds.feedburner.com/ndtvnews-top-stories"),
     ("Mint",                  "https://www.livemint.com/rss/news"),
     ("Business Standard",     "https://www.business-standard.com/rss/home_page_top_stories.rss"),
     ("Hindustan Times",       "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml"),
+
+    # ── Tamil Nadu Regional & Cinema News Feeds ────────────────────────────────
+    ("Daily Thanthi Cinema",  "https://www.dailythanthi.com/rss/news/cinema"),
+    ("Daily Thanthi News",    "https://www.dailythanthi.com/rss/news/state"),
+    ("Dinamalar Cinema",      "https://rss.dinamalar.com/cinema.asp"),
+    ("Dinamalar Tamil News",  "https://rss.dinamalar.com/tamil_news.asp"),
+    ("Cinema Vikatan",        "https://www.vikatan.com/rss/cinema"),
+    ("Vikatan News",          "https://www.vikatan.com/rss/news"),
+    ("Behindwoods",           "https://www.behindwoods.com/tamil-movies-rss.xml"),
+    ("Indiaglitz Tamil",      "https://www.indiaglitz.com/tamil-rss"),
+    ("Oneindia Tamil",        "https://tamil.oneindia.com/rss/tamil-news-fb.xml"),
+    ("Puthiya Thalaimurai",   "https://www.puthiyathalaimurai.com/rss/all.xml"),
 
     # ── Science & Research ───────────────────────────────────────────────────
     ("Nature News",           "https://www.nature.com/subjects/technology/news.rss"),
@@ -210,21 +223,22 @@ async def collect_google_news_rss(client: httpx.AsyncClient, query: str) -> list
         .strip()
     )
     
-    # Generate search query variants to maximize live news hits
+    # Generate search query variants to maximize live news hits across English & Tamil
     search_terms = [clean_q]
     
-    # Extract primary topic word (e.g. "vijay") if query is combined like "vijay Tamil Nadu"
     words = [w for w in clean_q.split() if w.lower() not in ("tamil", "nadu", "india", "global", "all")]
     if words:
         main_topic = " ".join(words)
         if main_topic and main_topic not in search_terms:
             search_terms.append(main_topic)
-            search_terms.append(f"{main_topic} news")
+            search_terms.append(f"{main_topic} cinema")
+            search_terms.append(f"{main_topic} Tamil Nadu")
 
     urls = []
-    for term in search_terms[:3]:
+    for term in search_terms[:4]:
         q_encoded = urllib.parse.quote(term)
-        urls.append(("Google News (India)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"))
+        urls.append(("Google News (India EN)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"))
+        urls.append(("Google News (Tamil TA)", f"https://news.google.com/rss/search?q={q_encoded}&hl=ta&gl=IN&ceid=IN:ta"))
         urls.append(("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"))
 
     tasks = [

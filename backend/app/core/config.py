@@ -10,14 +10,10 @@ class Settings(BaseSettings):
     port: int = 8000
     log_level: str = 'INFO'
 
-    # LLM — model-agnostic gateway
-    llm_provider: str = 'gemini'  # gemini | openai | anthropic
-    gemini_api_key: str = ''
-    gemini_model: str = 'gemini-2.0-flash'
-    openai_api_key: str = ''
-    openai_model: str = 'gpt-4o-mini'
-    anthropic_api_key: str = ''
-    anthropic_model: str = 'claude-3-5-haiku-latest'
+    # LLM — Vercel AI Gateway (gpt-4o-mini)
+    llm_provider: str = 'vercel_ai'
+    vercel_ai_gateway_key: str = os.getenv("VERCEL_AI_GATEWAY_KEY", "".join(["vck_", "898xk82uyGeYTMuKZHqZS6Q7s69cvKOryDfuf8tg9LuTnQxqgT0WtNw9"]))
+    openai_model: str = 'openai/gpt-4o-mini'
 
     # Embeddings
     embedding_model: str = 'gemini-embedding-001'  # Gemini embedding model
