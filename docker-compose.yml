@@ -1,6 +1,6 @@
 services:
   frontend:
-    build: .
+    build: ./frontend
     ports:
       - "3000:3000"
     environment:
@@ -80,7 +80,7 @@ services:
       - optimus_pg:/var/lib/postgresql/data
       - ./backend/db/init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
       - ./backend/db/002_production_schema.sql:/docker-entrypoint-initdb.d/002_production_schema.sql:ro
-      - ./lib/schema.sql:/docker-entrypoint-initdb.d/003_vtech_schema.sql:ro
+      - ./frontend/lib/schema.sql:/docker-entrypoint-initdb.d/003_vtech_schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d optimus"]
       interval: 10s

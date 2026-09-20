@@ -3,7 +3,7 @@ services:
   - type: web
     name: v-tech-frontend
     env: node
-    rootDir: ./
+    rootDir: frontend
     buildCommand: npm ci && npm run build
     startCommand: npm run start
     envVars:

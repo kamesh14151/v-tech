@@ -55,6 +55,29 @@ Optimus is an enterprise-grade AI media intelligence and executive briefing plat
 
 ---
 
+## 📁 Project Directory Structure
+
+```
+.
+├── frontend/             # Next.js 14 Web Application (Deployable to Vercel)
+│   ├── app/              # App Router Pages & API Routes
+│   ├── components/       # UI Components & Workspace Modules
+│   ├── lib/              # Client utilities & DB helpers
+│   ├── public/           # Static assets
+│   └── package.json      # Frontend dependencies
+│
+├── backend/              # Python FastAPI & LangGraph AI Service (Deployable to Render / Docker)
+│   ├── app/              # API Routes, LangGraph agents, & Ingestion pipeline
+│   ├── db/               # PostgreSQL schema migrations (001 - 004)
+│   └── requirements.txt  # Python dependencies
+│
+├── Dockerfile            # Unified multi-stage build Dockerfile
+├── docker-compose.yml    # Full-stack orchestrator
+└── render.yaml           # Render blueprint specification
+```
+
+---
+
 ## 💻 Local Development
 
 ### 1. Environment Setup
@@ -78,6 +101,7 @@ uvicorn app.main:app --reload --port 8000
 
 ### 4. Next.js Frontend
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
@@ -85,11 +109,19 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 
 ---
 
-## 🐳 Full Stack Docker Deployment
+## 🌐 Production Deployment
 
-To run the complete production stack (Next.js frontend, FastAPI backend, Redis worker, PostgreSQL DB):
-```bash
-docker compose up --build
-```
-* **Frontend**: [http://localhost:3000](http://localhost:3000)
-* **FastAPI Backend Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+### 1. Backend on Render (Docker / Python)
+* Root Directory: `backend`
+* Build Command: `pip install -r requirements.txt`
+* Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+* Set Environment Variables: `DATABASE_URL`, `REDIS_URL`, `GEMINI_API_KEY`.
+
+### 2. Frontend on Vercel
+* Root Directory: `frontend`
+* Build Command: `npm run build`
+* Set Environment Variables:
+  * `AGENT_BACKEND_URL`: `https://your-backend-service.onrender.com`
+  * `DATABASE_URL`: Your PostgreSQL Connection String
+  * `NEXTAUTH_SECRET`: Secret key for authentication
+

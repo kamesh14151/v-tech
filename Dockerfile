@@ -1,9 +1,9 @@
 # ─── Stage 1: Build Next.js ───────────────────────────────────────────────────
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm ci
-COPY . .
+COPY frontend ./
 RUN npm run build
 
 # ─── Stage 2: Final unified image ─────────────────────────────────────────────
@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 
 # ─── Copy built Next.js frontend ──────────────────────────────────────────────
-WORKDIR /app
+WORKDIR /app/frontend
 COPY --from=frontend-builder /app/.next ./.next
 COPY --from=frontend-builder /app/public ./public
 COPY --from=frontend-builder /app/node_modules ./node_modules
