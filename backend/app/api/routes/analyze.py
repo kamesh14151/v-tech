@@ -542,9 +542,13 @@ async def analyze(req: AnalyzeRequest):
     # Cap at max_articles
     filtered_articles = filtered_articles[:settings.max_articles]
 
+    sports_query = any(sp in f"{req.query} {req.topic_domain}".lower() for sp in {"cricket", "sports", "ipl", "bcci", "ashes", "football", "match", "t20", "odi", "stadium"})
+    sports_terms = {"cricket", "ashes", "test coach", "bcci", "ipl", "t20", "odi", "wicket", "batsman", "bowler", "stadium", "fifa", "premier league", "champions league", "fleming"}
+
     if not filtered_articles and raw_articles:
-        log.info("Pre-filter returned 0 articles. Falling back to top %d raw articles.", len(raw_articles))
-        filtered_articles = raw_articles[:settings.max_articles]
+        log.info("Pre-filter returned 0 articles. Falling back to raw articles.")
+        clean_raw = raw_articles if sports_query else [a for a in raw_articles if not any(sp in f"{a.title} {a.description or ''}".lower() for sp in sports_terms)]
+        filtered_articles = clean_raw[:settings.max_articles]
 
     if not filtered_articles:
         log.warning("No articles collected for query '%s'. Calling LLM synthetic topic report generator.", req.query)

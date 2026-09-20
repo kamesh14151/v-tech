@@ -330,13 +330,13 @@ export function WorkspaceLayout({
 
           <div className="h-4 w-px bg-foreground/10 hidden md:block shrink-0" />
 
-          {/* 1. Topic Domain Pill Button */}
+          {/* 1. Topic & News Title Search Pill Button */}
           <button
             onClick={() => setIsDomainModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-foreground/10 bg-foreground/3 text-xs font-mono text-foreground hover:bg-foreground/8 transition-colors max-w-[140px] sm:max-w-44 truncate"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-foreground/15 bg-background/60 backdrop-blur-md text-xs font-mono text-foreground hover:bg-foreground/8 transition-all max-w-[160px] sm:max-w-60 truncate shadow-sm"
           >
-            <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="font-semibold truncate text-[11px] sm:text-xs">{topicDomain || "Select Domain"}</span>
+            <Search className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="font-semibold truncate text-[11px] sm:text-xs">Topic: "{topicQuery || topicDomain}"</span>
             <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
           </button>
 
@@ -522,8 +522,8 @@ export function WorkspaceLayout({
 
           <div className="mt-auto p-4 border-t border-foreground/10 bg-background/40 font-mono text-[11px] text-muted-foreground space-y-1.5">
             <div className="flex justify-between items-center text-foreground font-semibold">
-              <span>Domain:</span>
-              <span className="text-amber-500 font-bold truncate max-w-28">{topicDomain || "Unset"}</span>
+              <span>Topic:</span>
+              <span className="text-amber-500 font-bold truncate max-w-28">{topicQuery || topicDomain || "Unset"}</span>
             </div>
             <div className="text-[10px] text-muted-foreground/80 truncate">
               {location} · {recency}
@@ -571,7 +571,7 @@ export function WorkspaceLayout({
               </div>
 
               <div className="pt-4 border-t border-foreground/10 text-xs font-mono text-muted-foreground space-y-1">
-                <div>Domain: <strong className="text-foreground">{topicDomain || "Unset"}</strong></div>
+                <div>Topic: <strong className="text-foreground">{topicQuery || topicDomain || "Unset"}</strong></div>
                 <div>Scope: <strong className="text-foreground">{location}</strong></div>
               </div>
             </div>
@@ -587,21 +587,21 @@ export function WorkspaceLayout({
         </main>
       </div>
 
-      {/* TOPIC DOMAIN & NEWS QUERY SELECTION POPUP MODAL */}
+      {/* TOPIC & NEWS TITLE SEARCH POPUP MODAL */}
       {isDomainModalOpen && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-3xl border border-foreground/20 bg-background p-5 sm:p-8 shadow-2xl space-y-6 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-xl rounded-3xl border border-foreground/20 bg-background/95 backdrop-blur-2xl p-5 sm:p-8 shadow-2xl space-y-6 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                  <Trophy className="w-4 h-4 text-amber-500" />
-                  Media Intelligence Scope
+                <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                  <Search className="w-4 h-4 text-blue-500" />
+                  Media Intelligence Search
                 </span>
                 <h2 className="text-xl sm:text-2xl font-display font-semibold text-foreground">
-                  Select Domain & News Topic
+                  Search Specific News Title or Topic
                 </h2>
               </div>
-              {topicDomain && (
+              {(topicQuery || topicDomain) && (
                 <button
                   onClick={() => setIsDomainModalOpen(false)}
                   className="p-1 rounded-full text-muted-foreground hover:text-foreground"
@@ -611,48 +611,11 @@ export function WorkspaceLayout({
               )}
             </div>
 
-            {/* Step 1: Select Industry Domain Category */}
-            <div className="space-y-2">
-              <label className="block text-xs font-mono text-foreground font-semibold flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] flex items-center justify-center font-bold">1</span>
-                Select Industry Domain:
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-sans">
-                {TOPIC_DOMAIN_OPTIONS.map((item) => (
-                  <button
-                    key={item.name}
-                    type="button"
-                    onClick={() => setModalSelectedDomain(item.name)}
-                    className={`p-3.5 rounded-2xl border text-left transition-all group flex flex-col justify-between space-y-1.5 ${
-                      modalSelectedDomain === item.name
-                        ? "border-emerald-500 bg-emerald-500/10 font-semibold shadow-sm"
-                        : "border-foreground/10 hover:border-foreground/30 bg-card hover:bg-foreground/3"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{item.emoji}</span>
-                        <span className={`font-semibold text-xs sm:text-sm ${modalSelectedDomain === item.name ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-foreground"}`}>
-                          {item.name}
-                        </span>
-                      </div>
-                      {modalSelectedDomain === item.name && (
-                        <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Step 2: Custom News Title / Topic Query Entry (Mandatory) */}
-            <div className="space-y-3 pt-3 border-t border-foreground/10">
+            {/* Primary Step: Enter News Title / Topic */}
+            <div className="space-y-3">
               <label className="block text-xs font-mono text-foreground font-semibold flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] flex items-center justify-center font-bold">2</span>
+                  <Sparkles className="w-4 h-4 text-emerald-500" />
                   Enter Specific News Title / Topic <span className="text-red-500 font-bold ml-1">* (Required)</span>:
                 </span>
                 <span className="text-[10px] text-muted-foreground font-normal">Min 2 characters</span>
@@ -661,23 +624,50 @@ export function WorkspaceLayout({
                 <input
                   type="text"
                   required
+                  autoFocus
                   value={modalCustomTopic}
                   onChange={(e) => setModalCustomTopic(e.target.value)}
-                  placeholder="e.g. vijay, GOAT movie release, PayU IPO..."
-                  className="flex-1 px-4 py-2.5 text-xs font-mono rounded-xl border border-foreground/20 bg-background focus:outline-none focus:border-emerald-500"
+                  placeholder="e.g. google gemini, vijay, PayU IPO, IPL 2026..."
+                  className="flex-1 px-4 py-3 text-xs font-mono rounded-xl border border-foreground/20 bg-background focus:outline-none focus:border-blue-500 shadow-sm"
                 />
                 <Button
                   onClick={() => handleSaveDomainFromModal(modalSelectedDomain, modalCustomTopic)}
-                  disabled={!modalSelectedDomain || modalCustomTopic.trim().length < 2}
-                  className="bg-foreground text-background hover:bg-foreground/85 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-mono text-xs font-semibold px-6 py-2.5 shadow-md gap-2"
+                  disabled={modalCustomTopic.trim().length < 2}
+                  className="bg-foreground text-background hover:bg-foreground/85 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-mono text-xs font-semibold px-6 py-3 shadow-md gap-2"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  Confirm Scope & Discover
+                  Discover News
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">Mandatory:</strong> Enter a specific topic, keyword, or breaking news title (at least 2 characters) for targeted media intelligence.
-              </p>
+            </div>
+
+            {/* Quick Topic Suggestions */}
+            <div className="space-y-2 pt-3 border-t border-foreground/10">
+              <label className="block text-xs font-mono text-muted-foreground font-semibold">
+                Or pick a popular topic suggestion:
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "🤖 Google Gemini", domain: "IT Companies & Tech", topic: "google gemini" },
+                  { label: "🎬 Vijay / Tamil Cinema", domain: "Cinema & Entertainment", topic: "vijay" },
+                  { label: "💳 PayU Fintech", domain: "Fintech & Banking", topic: "PayU" },
+                  { label: "🏏 IPL Auction 2026", domain: "Cricket & Sports", topic: "IPL auction 2026" },
+                  { label: "💻 IT Sector Growth", domain: "IT Companies & Tech", topic: "IT companies growth" },
+                ].map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setModalCustomTopic(item.topic);
+                      setModalSelectedDomain(item.domain);
+                      handleSaveDomainFromModal(item.domain, item.topic);
+                    }}
+                    className="px-3 py-1.5 rounded-full border border-foreground/12 hover:border-blue-500/50 bg-foreground/3 hover:bg-blue-500/10 text-xs font-mono text-foreground font-medium transition-all"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

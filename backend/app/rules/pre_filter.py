@@ -113,12 +113,20 @@ def apply_rule_pre_filter(
 
     passed: list[RawArticle] = []
 
+    sports_query = any(sp in f"{query} {topic_domain}".lower() for sp in {"cricket", "sports", "ipl", "bcci", "ashes", "football", "match", "t20", "odi", "stadium"})
+    sports_terms = {"cricket", "ashes", "test coach", "bcci", "ipl", "t20", "odi", "wicket", "batsman", "bowler", "stadium", "fifa", "premier league", "champions league", "fleming"}
+
     for a in articles:
         combined_text = f"{a.title} {a.description or ''}"
 
         # 1. Reject empty or micro-titles (< 15 characters)
         if len(a.title.strip()) < 15:
             dropped_empty += 1
+            continue
+
+        # 1.5 Reject sports news if query/topic is not a sports search
+        if not sports_query and any(sp in combined_text.lower() for sp in sports_terms):
+            dropped_exclusion += 1
             continue
 
         # 2. Reject explicit exclusions (horoscopes, gossip, etc.)
@@ -149,6 +157,8 @@ def apply_rule_pre_filter(
         for a in articles:
             if a.id not in existing_ids and len(a.title.strip()) >= 15:
                 combined_text = f"{a.title} {a.description or ''}"
+                if not sports_query and any(sp in combined_text.lower() for sp in sports_terms):
+                    continue
                 # Ensure supplemental article is relevant to effective keywords if specified
                 if effective_kws and not matches_keywords(combined_text, effective_kws):
                     continue
