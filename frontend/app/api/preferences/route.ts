@@ -9,6 +9,9 @@ async function ensurePreferencesTable() {
       CREATE TABLE IF NOT EXISTS user_preferences (
         id SERIAL PRIMARY KEY,
         user_id INTEGER UNIQUE,
+        company_name VARCHAR(255),
+        company_keywords TEXT,
+        competitor_keywords TEXT,
         topic_domain VARCHAR(150),
         location VARCHAR(100) DEFAULT 'Within Tamil Nadu (TN)',
         recency VARCHAR(50) DEFAULT 'Last 24 Hours',
@@ -17,6 +20,9 @@ async function ensurePreferencesTable() {
         delivery_time VARCHAR(10) DEFAULT '08:00',
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+      ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
+      ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS company_keywords TEXT;
+      ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS competitor_keywords TEXT;
       ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS topic_domain VARCHAR(150);
       ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS location VARCHAR(100) DEFAULT 'Within Tamil Nadu (TN)';
       ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS recency VARCHAR(50) DEFAULT 'Last 24 Hours';
@@ -43,13 +49,16 @@ export async function GET(req: NextRequest) {
     
     if (userId) {
       const rows = await query(
-        "SELECT topic_domain, location, recency, target_email, daily_digest_enabled, delivery_time FROM user_preferences WHERE user_id = $1 LIMIT 1",
+        "SELECT company_name, company_keywords, competitor_keywords, topic_domain, location, recency, target_email, daily_digest_enabled, delivery_time FROM user_preferences WHERE user_id = $1 LIMIT 1",
         [userId]
       );
 
       if (rows && rows[0]) {
         return NextResponse.json({
           preferences: {
+            company_name: rows[0].company_name || "",
+            company_keywords: rows[0].company_keywords || "",
+            competitor_keywords: rows[0].competitor_keywords || "",
             topic_domain: rows[0].topic_domain || "",
             location: rows[0].location || "Within Tamil Nadu (TN)",
             recency: rows[0].recency || "Last 24 Hours",
@@ -63,6 +72,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       preferences: {
+        company_name: "",
+        company_keywords: "",
+        competitor_keywords: "",
         topic_domain: "",
         location: "Within Tamil Nadu (TN)",
         recency: "Last 24 Hours",
@@ -75,6 +87,9 @@ export async function GET(req: NextRequest) {
     console.error("GET preferences error:", error);
     return NextResponse.json({
       preferences: {
+        company_name: "",
+        company_keywords: "",
+        competitor_keywords: "",
         topic_domain: "",
         location: "Within Tamil Nadu (TN)",
         recency: "Last 24 Hours",
@@ -93,8 +108,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { topic_domain, location, recency, target_email, daily_digest_enabled, delivery_time } = body;
+  const { company_name, company_keywords, competitor_keywords, topic_domain, location, recency, target_email, daily_digest_enabled, delivery_time } = body;
 
+  const resolvedCompanyName = company_name || "";
+  const resolvedCompanyKeywords = company_keywords || "";
+  const resolvedCompetitorKeywords = competitor_keywords || "";
   const resolvedDomain = topic_domain || "";
   const resolvedLocation = location || "Within Tamil Nadu (TN)";
   const resolvedRecency = recency || "Last 24 Hours";
@@ -109,9 +127,12 @@ export async function POST(req: NextRequest) {
 
     if (userId) {
       await query(
-        `INSERT INTO user_preferences (user_id, topic_domain, location, recency, target_email, daily_digest_enabled, delivery_time, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        `INSERT INTO user_preferences (user_id, company_name, company_keywords, competitor_keywords, topic_domain, location, recency, target_email, daily_digest_enabled, delivery_time, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
          ON CONFLICT (user_id) DO UPDATE SET
+           company_name = EXCLUDED.company_name,
+           company_keywords = EXCLUDED.company_keywords,
+           competitor_keywords = EXCLUDED.competitor_keywords,
            topic_domain = EXCLUDED.topic_domain,
            location = EXCLUDED.location,
            recency = EXCLUDED.recency,
@@ -119,13 +140,16 @@ export async function POST(req: NextRequest) {
            daily_digest_enabled = EXCLUDED.daily_digest_enabled,
            delivery_time = EXCLUDED.delivery_time,
            updated_at = NOW()`,
-        [userId, resolvedDomain, resolvedLocation, resolvedRecency, resolvedEmail, resolvedDigestEnabled, resolvedTime]
+        [userId, resolvedCompanyName, resolvedCompanyKeywords, resolvedCompetitorKeywords, resolvedDomain, resolvedLocation, resolvedRecency, resolvedEmail, resolvedDigestEnabled, resolvedTime]
       );
     }
 
     return NextResponse.json({
       success: true,
       preferences: {
+        company_name: resolvedCompanyName,
+        company_keywords: resolvedCompanyKeywords,
+        competitor_keywords: resolvedCompetitorKeywords,
         topic_domain: resolvedDomain,
         location: resolvedLocation,
         recency: resolvedRecency,
@@ -139,6 +163,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       preferences: {
+        company_name: resolvedCompanyName,
+        company_keywords: resolvedCompanyKeywords,
+        competitor_keywords: resolvedCompetitorKeywords,
         topic_domain: resolvedDomain,
         location: resolvedLocation,
         recency: resolvedRecency,
@@ -149,3 +176,4 @@ export async function POST(req: NextRequest) {
     });
   }
 }
+
