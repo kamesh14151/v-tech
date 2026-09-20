@@ -90,6 +90,22 @@ export function ExecutiveDashboardView({
     }
   };
 
+  const fetchDashboardData = useCallback(async () => {
+    if (!topicDomain) return;
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/news?topic_domain=${encodeURIComponent(topicDomain)}&location=${encodeURIComponent(location)}&recency=${encodeURIComponent(recency)}&pageSize=12`
+      );
+      const data = await res.json();
+      setArticles(data.articles || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [topicDomain, location, recency]);
+
   const loadPastReport = async (reportId: number) => {
     setReportLoading(true);
     setIsHistoryModalOpen(false);

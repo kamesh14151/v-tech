@@ -59,6 +59,16 @@ app.include_router(digest_router, prefix=settings.api_prefix, tags=['digest'])
 app.include_router(reports_router, prefix=settings.api_prefix, tags=['reports'])
 
 
+@app.get('/')
+async def root():
+    return {
+        'status': 'ok',
+        'service': 'Optimus Media Intelligence Backend API v2.0',
+        'docs': '/docs',
+        'health': '/health/live'
+    }
+
+
 @app.middleware('http')
 async def service_auth(request: Request, call_next):
     if request.url.path.startswith(settings.api_prefix):
