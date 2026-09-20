@@ -156,14 +156,18 @@ async def collect_guardian(client: httpx.AsyncClient, query: str, recency: str) 
         return []
 
 
-def _fetch_rss_sync(source_name: str, feed_url: str, max_items: int = 15) -> list[RawArticle]:
-    """Parse a single live RSS feed synchronously."""
+async def _fetch_single_rss(client: httpx.AsyncClient, source_name: str, feed_url: str, max_items: int = 12) -> list[RawArticle]:
+    """Parse a single live RSS feed asynchronously using httpx."""
     try:
-        parsed = feedparser.parse(
+        r = await client.get(
             feed_url,
-            agent="Mozilla/5.0 (NewsIntelBot/2.0; +https://antigravity.internal)",
-            request_headers={"Accept": "application/rss+xml, application/xml, text/xml"},
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+            follow_redirects=True,
+            timeout=3.5,
         )
+        if r.status_code != 200:
+            return []
+        parsed = feedparser.parse(r.content)
         out: list[RawArticle] = []
         for entry in parsed.entries[:max_items]:
             title = getattr(entry, "title", "")
@@ -188,11 +192,11 @@ def _fetch_rss_sync(source_name: str, feed_url: str, max_items: int = 15) -> lis
             ))
         return out
     except Exception as exc:
-        log.warning("RSS fetch error for %s (%s): %s", source_name, feed_url, exc)
+        log.warning("RSS fetch notice for %s (%s): %s", source_name, feed_url, exc)
         return []
 
 
-async def collect_google_news_rss(query: str) -> list[RawArticle]:
+async def collect_google_news_rss(client: httpx.AsyncClient, query: str) -> list[RawArticle]:
     """Fetch live Google News RSS search results for specific topic/query."""
     if not query or not query.strip():
         return []
@@ -202,9 +206,8 @@ async def collect_google_news_rss(query: str) -> list[RawArticle]:
         ("Google News (India)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"),
         ("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"),
     ]
-    loop = asyncio.get_event_loop()
     tasks = [
-        loop.run_in_executor(None, _fetch_rss_sync, name, url, 20)
+        _fetch_single_rss(client, name, url, 20)
         for name, url in urls
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -215,11 +218,10 @@ async def collect_google_news_rss(query: str) -> list[RawArticle]:
     return out
 
 
-async def collect_rss_all() -> list[RawArticle]:
-    """Fetch all 35+ live RSS feeds in parallel."""
-    loop = asyncio.get_event_loop()
+async def collect_rss_all(client: httpx.AsyncClient) -> list[RawArticle]:
+    """Fetch all 35+ live RSS feeds in parallel using httpx."""
     tasks = [
-        loop.run_in_executor(None, _fetch_rss_sync, name, url, 12)
+        _fetch_single_rss(client, name, url, 12)
         for name, url in RSS_FEEDS
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -239,11 +241,11 @@ async def collect_raw_articles(
     and return both articles and a per-source breakdown count.
     Returns: (deduplicated articles, {source_name: count})
     """
-    async with httpx.AsyncClient(timeout=12.0) as client:
+    async with httpx.AsyncClient(timeout=6.0) as client:
         na_task = collect_newsapi(client, query, recency)
         gd_task = collect_guardian(client, query, recency)
-        rss_task = collect_rss_all()
-        gnews_task = collect_google_news_rss(query)
+        rss_task = collect_rss_all(client)
+        gnews_task = collect_google_news_rss(client, query)
 
         results = await asyncio.gather(na_task, gd_task, rss_task, gnews_task, return_exceptions=True)
 
