@@ -21,9 +21,9 @@ class Settings(BaseSettings):
     vector_similarity_threshold: float = 0.70
 
     # News sources
-    newsapi_key: str = ''
-    guardian_api_key: str = ''
-    gnews_api_key: str = ''  # optional — falls back to RSS
+    newsapi_key: str = os.getenv("NEWS_API_KEY", "35dd6258d259483e9e29062fe74acb38")
+    guardian_api_key: str = os.getenv("GUARDIAN_API_KEY", "dcec71f7-0a96-4ec3-8145-e629799258e5")
+    gnews_api_key: str = os.getenv("GNEWS_API_KEY", "18019e7f47c480c18309c4809bf0a6ec")
 
     # Infrastructure
     redis_url: str = 'redis://redis:6379/0'

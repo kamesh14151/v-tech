@@ -335,6 +335,54 @@ async def collect_web_search_news(client: httpx.AsyncClient, query: str) -> list
     return out
 
 
+async def collect_gnews_api(client: httpx.AsyncClient, query: str, recency: str) -> list[RawArticle]:
+    """Fetch live news from GNews API using GNEWS_API_KEY."""
+    key = settings.gnews_api_key or os.getenv("GNEWS_API_KEY", "18019e7f47c480c18309c4809bf0a6ec")
+    if not key or not query or not query.strip():
+        return []
+    import urllib.parse
+    clean_q = (
+        query.replace("Within ", "")
+        .replace("TN", "Tamil Nadu")
+        .replace("IN", "India")
+        .replace("(", "")
+        .replace(")", "")
+        .strip()
+    )
+    try:
+        r = await client.get(
+            "https://gnews.io/api/v4/search",
+            params={
+                "q": clean_q,
+                "lang": "en",
+                "country": "in",
+                "max": settings.max_articles_per_source,
+                "apikey": key,
+            },
+            timeout=4.0,
+        )
+        if r.status_code == 200:
+            out: list[RawArticle] = []
+            for a in r.json().get("articles", []):
+                if not a.get("title") or not a.get("url"):
+                    continue
+                src_name = normalize_source_name((a.get("source") or {}).get("name"), a["url"])
+                out.append(RawArticle(
+                    id=hash_url(a["url"], "gnews-"),
+                    title=clean_text(a["title"], 300),
+                    url=a["url"],
+                    source=f"{src_name} (GNews)",
+                    published_at=parse_iso_date(a.get("publishedAt")),
+                    description=clean_text(a.get("description"), 1000),
+                    api_source="gnews",
+                    source_reliability=get_reliability(src_name),
+                ))
+            return out
+    except Exception as exc:
+        log.warning("GNews API fetch notice (%s): %s", clean_q, exc)
+    return []
+
+
 async def collect_raw_articles(
     query: str = "",
     recency: str = "Last 24 Hours",
@@ -347,11 +395,12 @@ async def collect_raw_articles(
     async with httpx.AsyncClient(timeout=4.0) as client:
         na_task = collect_newsapi(client, query, recency)
         gd_task = collect_guardian(client, query, recency)
+        gnews_api_task = collect_gnews_api(client, query, recency)
         rss_task = collect_rss_all(client)
         gnews_task = collect_google_news_rss(client, query)
         web_task = collect_web_search_news(client, query)
 
-        results = await asyncio.gather(na_task, gd_task, rss_task, gnews_task, web_task, return_exceptions=True)
+        results = await asyncio.gather(na_task, gd_task, gnews_api_task, rss_task, gnews_task, web_task, return_exceptions=True)
 
     all_raw: list[RawArticle] = []
     for r in results:
