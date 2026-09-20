@@ -38,3 +38,5 @@ next-env.d.ts
 
 # Build/test artifacts
 buildcheck/
+aj-chat/
+
