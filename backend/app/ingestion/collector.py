@@ -267,6 +267,74 @@ async def collect_rss_all(client: httpx.AsyncClient) -> list[RawArticle]:
     return out
 
 
+async def collect_web_search_news(client: httpx.AsyncClient, query: str) -> list[RawArticle]:
+    """Perform direct live web search for target query to harvest latest news articles."""
+    if not query or not query.strip():
+        return []
+    import urllib.parse
+    import re
+
+    clean_q = (
+        query.replace("Within ", "")
+        .replace("TN", "Tamil Nadu")
+        .replace("IN", "India")
+        .replace("(", "")
+        .replace(")", "")
+        .strip()
+    )
+
+    out: list[RawArticle] = []
+    search_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(clean_q + ' news latest breaking')}"
+    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, Gecko) Chrome/120.0.0.0 Safari/537.36"}
+
+    try:
+        resp = await client.get(search_url, headers=headers, timeout=3.5)
+        if resp.status_code == 200:
+            html = resp.text
+            matches = re.findall(r'<a href="([^"]+)".*?class="result__a"[^>]*>(.*?)</a>.*?<a class="result__snippet[^"]*"[^>]*>(.*?)</a>', html, re.DOTALL)
+            if not matches:
+                matches = re.findall(r'<a class="result__url" href="([^"]+)".*?>.*?</a>', html)
+
+            for item in matches[:10]:
+                if isinstance(item, tuple) and len(item) == 3:
+                    raw_url, title_html, snippet_html = item
+                elif isinstance(item, tuple) and len(item) == 2:
+                    raw_url, snippet_html = item
+                    title_html = clean_q
+                else:
+                    raw_url = item if isinstance(item, str) else ""
+                    title_html = clean_q
+                    snippet_html = f"Live news coverage for {clean_q}"
+
+                clean_title = clean_text(re.sub(r'<[^>]+>', '', title_html), 300)
+                clean_desc = clean_text(re.sub(r'<[^>]+>', '', snippet_html), 1000)
+
+                parsed_url = raw_url
+                if "//duckduckgo.com/l/?" in raw_url or "uddg=" in raw_url:
+                    m = re.search(r'uddg=([^&]+)', raw_url)
+                    if m:
+                        parsed_url = urllib.parse.unquote(m.group(1))
+
+                if clean_title and len(clean_title) > 5 and parsed_url.startswith("http") and not any(x in parsed_url for x in ("duckduckgo.com", "bing.com", "google.com/search")):
+                    domain = urllib.parse.urlparse(parsed_url).netloc.replace("www.", "")
+                    source_name = domain.split(".")[0].capitalize() if domain else "Live Web Search"
+
+                    out.append(RawArticle(
+                        id=f"web-{hash(parsed_url)}",
+                        title=clean_title,
+                        url=parsed_url,
+                        source=f"{source_name} (Web)",
+                        published_at=datetime.now(timezone.utc).isoformat(),
+                        description=clean_desc or f"Live news search match for {clean_q}.",
+                        api_source="web_search",
+                        source_reliability=0.88,
+                    ))
+    except Exception as exc:
+        log.warning("Web search fetch notice (%s): %s", clean_q, exc)
+
+    return out
+
+
 async def collect_raw_articles(
     query: str = "",
     recency: str = "Last 24 Hours",
@@ -281,8 +349,9 @@ async def collect_raw_articles(
         gd_task = collect_guardian(client, query, recency)
         rss_task = collect_rss_all(client)
         gnews_task = collect_google_news_rss(client, query)
+        web_task = collect_web_search_news(client, query)
 
-        results = await asyncio.gather(na_task, gd_task, rss_task, gnews_task, return_exceptions=True)
+        results = await asyncio.gather(na_task, gd_task, rss_task, gnews_task, web_task, return_exceptions=True)
 
     all_raw: list[RawArticle] = []
     for r in results:

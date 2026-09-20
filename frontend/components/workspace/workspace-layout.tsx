@@ -240,6 +240,7 @@ export function WorkspaceLayout({
             location={location}
             recency={recency}
             userEmail={effectiveEmail}
+            initialReport={analysisResult}
             onAnalysisComplete={(result: any) => setAnalysisResult(result)}
           />
         );
