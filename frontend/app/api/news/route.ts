@@ -109,13 +109,16 @@ export async function GET(req: NextRequest) {
   const searchTerms = baseTerm.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
 
   try {
+    const newsApiKey = process.env.NEWSAPI_KEY || process.env.NEWS_API_KEY || "35dd6258d259483e9e29062fe74acb38";
+    const guardianApiKey = process.env.GUARDIAN_API_KEY || "dcec71f7-0a96-4ec3-8145-e629799258e5";
+
     const [newsApiRes, guardianRes] = await Promise.allSettled([
       fetch(
         `https://newsapi.org/v2/everything?q=${encodeURIComponent(effectiveQuery)}&from=${fromDate}&pageSize=${pageSize}&sortBy=publishedAt&language=en`,
-        { headers: { "X-Api-Key": process.env.NEWSAPI_KEY! }, next: { revalidate: 120 } }
+        { headers: { "X-Api-Key": newsApiKey }, next: { revalidate: 120 } }
       ),
       fetch(
-        `https://content.guardianapis.com/search?q=${encodeURIComponent(effectiveQuery)}&from-date=${fromDate}&page-size=${pageSize}&show-fields=trailText,thumbnail,byline,bodyText&api-key=${process.env.GUARDIAN_API_KEY}`,
+        `https://content.guardianapis.com/search?q=${encodeURIComponent(effectiveQuery)}&from-date=${fromDate}&page-size=${pageSize}&show-fields=trailText,thumbnail,byline,bodyText&api-key=${guardianApiKey}`,
         { next: { revalidate: 120 } }
       ),
     ]);

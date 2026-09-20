@@ -94,19 +94,23 @@ def _from_date(recency: str) -> str:
 
 async def collect_newsapi(client: httpx.AsyncClient, query: str, recency: str) -> list[RawArticle]:
     """Fetch real articles from NewsAPI if configured."""
-    if not settings.newsapi_key:
+    key = settings.newsapi_key or os.getenv("NEWS_API_KEY", "35dd6258d259483e9e29062fe74acb38")
+    if not key or not query or not query.strip():
         return []
+    clean_q = query.strip()
+    for noise in ["Within ", "India (National)", "India National", "Tamil Nadu (TN)", "(TN)", "(National)", "Global (All)"]:
+        clean_q = clean_q.replace(noise, "").strip()
     try:
         r = await client.get(
             "https://newsapi.org/v2/everything",
             params={
-                "q": query,
+                "q": clean_q,
                 "from": _from_date(recency),
                 "pageSize": settings.max_articles_per_source,
                 "sortBy": "publishedAt",
                 "language": "en",
             },
-            headers={"X-Api-Key": settings.newsapi_key},
+            headers={"X-Api-Key": key},
             timeout=10.0,
         )
         r.raise_for_status()
@@ -134,17 +138,21 @@ async def collect_newsapi(client: httpx.AsyncClient, query: str, recency: str) -
 
 async def collect_guardian(client: httpx.AsyncClient, query: str, recency: str) -> list[RawArticle]:
     """Fetch real articles from The Guardian API if configured."""
-    if not settings.guardian_api_key:
+    key = settings.guardian_api_key or os.getenv("GUARDIAN_API_KEY", "dcec71f7-0a96-4ec3-8145-e629799258e5")
+    if not key or not query or not query.strip():
         return []
+    clean_q = query.strip()
+    for noise in ["Within ", "India (National)", "India National", "Tamil Nadu (TN)", "(TN)", "(National)", "Global (All)"]:
+        clean_q = clean_q.replace(noise, "").strip()
     try:
         r = await client.get(
             "https://content.guardianapis.com/search",
             params={
-                "q": query,
+                "q": clean_q,
                 "from-date": _from_date(recency),
                 "page-size": settings.max_articles_per_source,
                 "show-fields": "headline,trailText,byline",
-                "api-key": settings.guardian_api_key,
+                "api-key": key,
             },
             timeout=10.0,
         )
