@@ -18,6 +18,9 @@ export async function GET(req: NextRequest) {
     });
 
     if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json({});
+      }
       const errData = await response.json().catch(() => ({}));
       return NextResponse.json(errData, { status: response.status });
     }

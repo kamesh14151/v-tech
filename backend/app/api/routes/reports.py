@@ -74,7 +74,7 @@ async def get_latest_report(user_email: str = Query(default='')):
                 ).fetchone()
 
             if not row:
-                raise HTTPException(status_code=404, detail="No saved report found.")
+                return {}
 
             report_data = row[5]
             if isinstance(report_data, str):
