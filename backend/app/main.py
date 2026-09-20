@@ -61,11 +61,35 @@ app.include_router(reports_router, prefix=settings.api_prefix, tags=['reports'])
 
 @app.get('/')
 async def root():
+    # Check LLM Gateway status
+    from app.services.llm import llm
+    client = llm.client
+    llm_status = {
+        'status': 'ready' if (client and getattr(client, 'available', False)) else 'not_configured',
+        'provider': 'Vercel AI Gateway' if (client and getattr(client, 'available', False)) else 'none',
+        'model': llm.model_name(),
+        'active': bool(client and getattr(client, 'available', False)),
+    }
+
+    # Check Database connection status
+    db_status = {'status': 'unknown', 'connected': False}
+    try:
+        import psycopg
+        url = settings.database_url.replace('+psycopg', '')
+        with psycopg.connect(url, connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT 1;')
+                db_status = {'status': 'ready', 'connected': True}
+    except Exception as exc:
+        db_status = {'status': 'degraded', 'connected': False, 'error': str(exc)}
+
     return {
         'status': 'ok',
         'service': 'Optimus Media Intelligence Backend API v2.0',
+        'llm': llm_status,
+        'database': db_status,
         'docs': '/docs',
-        'health': '/health/live'
+        'health': '/health/ready',
     }
 
 
