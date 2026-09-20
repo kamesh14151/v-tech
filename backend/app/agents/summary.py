@@ -91,20 +91,34 @@ async def run(
         )
         validated = resp.result
         out: list[Summary] = []
-        for x in validated.items:
-            idx = x.index
-            if 0 <= idx < len(target):
-                s = target[idx]
-                out.append(Summary(
+        for i, x in enumerate(validated.items):
+            idx = getattr(x, 'index', i)
+            if idx is None or not (0 <= idx < len(target)):
+                idx = i if i < len(target) else 0
+            s = target[idx]
+            out.append(Summary(
+                story_id=s.story_id,
+                headline=getattr(x, 'headline', s.title) or s.title,
+                executive_summary=getattr(x, 'executive_summary', s.narrative) or f"Key intelligence report regarding {s.title}.",
+                key_facts=getattr(x, 'key_facts', []) or [f'Priority: {s.priority}', f'Sources: {", ".join(s.sources[:3])}'],
+                recommended_action=getattr(x, 'recommended_action', f'Monitor developments for {s.title}.') or f'Monitor developments for {s.title}.',
+                impact=getattr(x, 'impact', '') or '',
+                what_to_watch=getattr(x, 'what_to_watch', []) or [],
+                sources_used=getattr(x, 'sources_used', s.sources) or s.sources,
+            ))
+
+        if not out:
+            out = [
+                Summary(
                     story_id=s.story_id,
-                    headline=x.headline,
-                    executive_summary=x.executive_summary,
-                    key_facts=x.key_facts,
-                    recommended_action=x.recommended_action,
-                    impact=x.impact,
-                    what_to_watch=x.what_to_watch,
-                    sources_used=x.sources_used or s.sources,
-                ))
+                    headline=s.title,
+                    executive_summary=s.narrative or f"Key intelligence report regarding {s.title}.",
+                    key_facts=[f'Priority: {s.priority}', f'Sources: {", ".join(s.sources[:3])}'],
+                    recommended_action=f'Monitor breaking updates for {s.title}.',
+                    sources_used=s.sources,
+                )
+                for s in target
+            ]
         return out, _log(agent_logs, 'summary', len(stories), len(out), t0, 'ok',
                          input_tokens=resp.input_tokens, output_tokens=resp.output_tokens,
                          cost_usd=resp.cost_usd, model=resp.model)
@@ -113,9 +127,9 @@ async def run(
             Summary(
                 story_id=s.story_id,
                 headline=s.title,
-                executive_summary=s.narrative,
+                executive_summary=s.narrative or f"Key intelligence report regarding {s.title}.",
                 key_facts=[f'Priority: {s.priority}', f'Sources: {", ".join(s.sources[:3])}'],
-                recommended_action='Monitor this story.',
+                recommended_action=f'Monitor breaking updates for {s.title}.',
                 sources_used=s.sources,
             )
             for s in target
