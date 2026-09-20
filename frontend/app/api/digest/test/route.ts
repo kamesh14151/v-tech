@@ -15,7 +15,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No recipient email provided" }, { status: 400 });
   }
 
-  const origin = req.nextUrl.origin || "https://optimus.ajstudioz.co.in";
+  const hostHeader = req.headers.get("host") || "";
+  const protocol = req.headers.get("x-forwarded-proto") || "https";
+  const origin = hostHeader ? `${protocol}://${hostHeader}` : (req.nextUrl.origin || "https://optimus.ajstudioz.co.in");
 
   try {
     // 1. Fetch user preferences
@@ -95,20 +97,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Gmail compose fallback if direct sending is restricted
+    // Fallback to Gmail compose window if direct API send failed
     const emailSubject = `Lookout Complete: ${searchQuery} Executive Briefing`;
     const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(`Optimus Intelligence Morning Briefing for ${searchQuery}:\n\n` + articles.map((a, i) => `${i+1}. ${a.title}\n${a.url}`).join("\n\n"))}`;
 
     return NextResponse.json({
-      status: "sent",
-      success: true,
+      status: "fallback_gmail",
+      success: false,
       gmailComposeUrl,
       targetEmail,
-      error: result.error,
+      error: result.error || "Resend API call failed on deployment",
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to send test email" }, { status: 500 });
   }
 }
+
 
 

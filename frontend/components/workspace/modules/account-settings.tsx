@@ -124,12 +124,21 @@ export function AccountSettingsView({
       });
       const data = await res.json();
       if (res.ok && data.status === "sent") {
-        setTestEmailMsg({ type: "success", text: `Automated morning intelligence digest (with live hyperlinks) dispatched to ${targetEmail}!` });
+        setTestEmailMsg({
+          type: "success",
+          text: `Automated morning briefing (ID: ${data.emailId || 'sent'}) dispatched directly to ${targetEmail}! Check your inbox/spam.`,
+        });
       } else if (data.gmailComposeUrl) {
         window.open(data.gmailComposeUrl, "_blank");
-        setTestEmailMsg({ type: "success", text: "Opened Gmail Compose window with pre-formatted morning report and hyperlinked citations." });
+        setTestEmailMsg({
+          type: "error",
+          text: `Resend API on Render message: ${data.error || 'Direct dispatch failed'}. Opened Gmail Compose as fallback.`,
+        });
       } else {
-        setTestEmailMsg({ type: "error", text: data.error || data.detail || "Could not send test email." });
+        setTestEmailMsg({
+          type: "error",
+          text: data.error || data.detail || "Could not dispatch test email. Ensure RESEND_API_KEY is set in Render settings.",
+        });
       }
     } catch (err: any) {
       setTestEmailMsg({ type: "error", text: err.message || "Failed to trigger morning test email." });
@@ -137,6 +146,7 @@ export function AccountSettingsView({
       setTestingEmail(false);
     }
   };
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
