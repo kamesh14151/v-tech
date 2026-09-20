@@ -13,6 +13,35 @@ from app.schemas.agent_outputs import SentimentOutput
 from app.services.llm import llm
 
 
+# High-speed deterministic sentiment keywords
+POSITIVE_WORDS = {
+    'profit', 'surge', 'growth', 'gain', 'success', 'record', 'bullish', 'up', 'launch',
+    'win', 'approved', 'breakthrough', 'expansion', 'positive', 'lead', 'high', 'rally',
+    'boost', 'hero', 'triumph', 'deal', 'partner', 'award', 'best', 'innovative',
+}
+
+NEGATIVE_WORDS = {
+    'loss', 'drop', 'crash', 'decline', 'penalty', 'lawsuit', 'fraud', 'investigation',
+    'fail', 'down', 'fire', 'crisis', 'allegation', 'risk', 'warning', 'concern',
+    'scam', 'default', 'ban', 'sanction', 'threat', 'strike', 'charge', 'accident',
+}
+
+
+def _analyze_text_sentiment(text: str) -> tuple[str, float, float, str]:
+    words = set(text.lower().split())
+    pos_hits = len(words & POSITIVE_WORDS)
+    neg_hits = len(words & NEGATIVE_WORDS)
+
+    if pos_hits > neg_hits:
+        score = min(1.0, 0.25 + (pos_hits - neg_hits) * 0.2)
+        return 'positive', round(score, 2), 0.85, f"Identified {pos_hits} positive signals ({', '.join(list(words & POSITIVE_WORDS)[:3])})"
+    elif neg_hits > pos_hits:
+        score = max(-1.0, -0.25 - (neg_hits - pos_hits) * 0.2)
+        return 'negative', round(score, 2), 0.85, f"Identified {neg_hits} risk/negative signals ({', '.join(list(words & NEGATIVE_WORDS)[:3])})"
+    else:
+        return 'neutral', 0.0, 0.75, "Balanced or objective reporting tone."
+
+
 async def run(
     stories: list[Story],
     agent_logs: list[AgentLog],
@@ -21,85 +50,19 @@ async def run(
     if not stories:
         return [], _log(agent_logs, 'sentiment_agent', 0, 0, t0, 'fallback')
 
-    if not llm.client:
-        out = [
-            SentimentAnalysis(
-                story_id=s.story_id,
-                sentiment='neutral',
-                polarity_score=0.0,
-                confidence=0.7,
-                reasoning='Default fallback: LLM unconfigured.',
-            )
-            for s in stories
-        ]
-        return out, _log(agent_logs, 'sentiment_agent', len(stories), len(out), t0, 'fallback')
+    out: list[SentimentAnalysis] = []
+    for s in stories:
+        combined = f"{s.title} {s.narrative}"
+        sentiment, polarity, conf, reason = _analyze_text_sentiment(combined)
+        out.append(SentimentAnalysis(
+            story_id=s.story_id,
+            sentiment=sentiment,
+            polarity_score=polarity,
+            confidence=conf,
+            reasoning=reason,
+        ))
 
-    try:
-        resp = llm.json_validated(
-            'You are the Market & Public Sentiment Analysis Agent. '
-            'For each story, evaluate the overall tone and market/public sentiment. '
-            "sentiment: 'positive', 'negative', or 'neutral'. "
-            'polarity_score: float from -1.0 (extremely negative/disastrous) to +1.0 (extremely bullish/positive). '
-            'confidence: float from 0.0 to 1.0 reflecting how unambiguous the sentiment signals are. '
-            'reasoning: 1 sentence explaining the sentiment rationale.',
-            'STORIES:\n' + '\n'.join(
-                f'{i}: {s.title} | {s.narrative}'
-                for i, s in enumerate(stories)
-            ),
-            {
-                'type': 'array',
-                'items': {
-                    'type': 'object',
-                    'properties': {
-                        'index': {'type': 'integer'},
-                        'sentiment': {'type': 'string', 'enum': ['positive', 'negative', 'neutral']},
-                        'polarity_score': {'type': 'number'},
-                        'confidence': {'type': 'number'},
-                        'reasoning': {'type': 'string'},
-                    },
-                    'required': ['index', 'sentiment', 'polarity_score', 'confidence', 'reasoning'],
-                },
-            },
-            SentimentOutput,
-        )
-        validated = resp.result
-        by_index = {x.index: x for x in validated.items}
-        out: list[SentimentAnalysis] = []
-        for i, s in enumerate(stories):
-            x = by_index.get(i)
-            if x:
-                out.append(SentimentAnalysis(
-                    story_id=s.story_id,
-                    sentiment=x.sentiment,
-                    polarity_score=x.polarity_score,
-                    confidence=x.confidence,
-                    reasoning=x.reasoning,
-                ))
-            else:
-                out.append(SentimentAnalysis(
-                    story_id=s.story_id,
-                    sentiment='neutral',
-                    polarity_score=0.0,
-                    confidence=0.5,
-                    reasoning='Unmatched in LLM response',
-                ))
-
-        return out, _log(agent_logs, 'sentiment_agent', len(stories), len(out), t0, 'ok',
-                         input_tokens=resp.input_tokens, output_tokens=resp.output_tokens,
-                         cost_usd=resp.cost_usd, model=resp.model)
-
-    except Exception as exc:
-        out = [
-            SentimentAnalysis(
-                story_id=s.story_id,
-                sentiment='neutral',
-                polarity_score=0.0,
-                confidence=0.5,
-                reasoning=f'Fallback: {exc}',
-            )
-            for s in stories
-        ]
-        return out, _log(agent_logs, 'sentiment_agent', len(stories), len(out), t0, 'error', error=str(exc))
+    return out, _log(agent_logs, 'sentiment_agent', len(stories), len(out), t0, 'ok', model='lexicon-nlp-engine')
 
 
 def _log(existing, name, items_in, items_out, t0, status, *,

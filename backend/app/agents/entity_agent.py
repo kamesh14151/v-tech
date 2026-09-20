@@ -15,6 +15,28 @@ from app.schemas.agent_outputs import EntityOutput
 from app.services.llm import llm
 
 
+import re
+
+KNOWN_GEOS = {"India", "Tamil Nadu", "Chennai", "Bangalore", "Karnataka", "Mumbai", "Delhi", "US", "USA", "UK", "Global"}
+KNOWN_TECHS = {"AI", "EV", "UPI", "SaaS", "LLM", "Cloud", "Biotech", "5G", "API", "Battery"}
+
+def _extract_entities_fast(text: str) -> EntityAnalysis:
+    caps = re.findall(r'\b[A-Z][a-zA-Z0-9\.]+\b', text)
+    unique_caps = [c for c in set(caps) if len(c) > 2 and c not in {"The", "And", "For", "With", "This", "That"}]
+
+    geos = [c for c in unique_caps if c in KNOWN_GEOS]
+    techs = [c for c in unique_caps if c in KNOWN_TECHS]
+    companies_or_people = [c for c in unique_caps if c not in KNOWN_GEOS and c not in KNOWN_TECHS]
+
+    return EntityAnalysis(
+        story_id='',
+        companies=companies_or_people[:5],
+        people=[],
+        geographies=geos[:3] or ["Global"],
+        technologies=techs[:3],
+    )
+
+
 async def run(
     stories: list[Story],
     agent_logs: list[AgentLog],
@@ -23,60 +45,14 @@ async def run(
     if not stories:
         return [], _log(agent_logs, 'entity_agent', 0, 0, t0, 'fallback')
 
-    if not llm.client:
-        out = [EntityAnalysis(story_id=s.story_id) for s in stories]
-        return out, _log(agent_logs, 'entity_agent', len(stories), len(out), t0, 'fallback')
+    out: list[EntityAnalysis] = []
+    for s in stories:
+        combined = f"{s.title} {s.narrative}"
+        ent = _extract_entities_fast(combined)
+        ent.story_id = s.story_id
+        out.append(ent)
 
-    try:
-        resp = llm.json_validated(
-            'You are the Named Entity Extraction Agent. '
-            'For each story, extract: '
-            '- companies: company names mentioned (e.g. "OpenAI", "Microsoft") '
-            '- people: person names (e.g. "Sam Altman", "Sundar Pichai") '
-            '- geographies: countries, cities, regions (e.g. "India", "San Francisco") '
-            '- technologies: specific technologies mentioned (e.g. "GPT-4", "LangGraph") '
-            'Keep each entity list to at most 5 items. Use proper names, not pronouns.',
-            'STORIES:\n' + '\n'.join(
-                f'{i}: {s.title} | {s.narrative}'
-                for i, s in enumerate(stories)
-            ),
-            {
-                'type': 'array',
-                'items': {
-                    'type': 'object',
-                    'properties': {
-                        'index': {'type': 'integer'},
-                        'companies': {'type': 'array', 'items': {'type': 'string'}},
-                        'people': {'type': 'array', 'items': {'type': 'string'}},
-                        'geographies': {'type': 'array', 'items': {'type': 'string'}},
-                        'technologies': {'type': 'array', 'items': {'type': 'string'}},
-                    },
-                    'required': ['index'],
-                },
-            },
-            EntityOutput,
-        )
-        validated = resp.result
-        by_index = {x.index: x for x in validated.items}
-        out: list[EntityAnalysis] = []
-        for i, s in enumerate(stories):
-            x = by_index.get(i)
-            if x:
-                out.append(EntityAnalysis(
-                    story_id=s.story_id,
-                    companies=x.companies,
-                    people=x.people,
-                    geographies=x.geographies,
-                    technologies=x.technologies,
-                ))
-            else:
-                out.append(EntityAnalysis(story_id=s.story_id))
-        return out, _log(agent_logs, 'entity_agent', len(stories), len(out), t0, 'ok',
-                         input_tokens=resp.input_tokens, output_tokens=resp.output_tokens,
-                         cost_usd=resp.cost_usd, model=resp.model)
-    except Exception as exc:
-        out = [EntityAnalysis(story_id=s.story_id) for s in stories]
-        return out, _log(agent_logs, 'entity_agent', len(stories), len(out), t0, 'error', error=str(exc))
+    return out, _log(agent_logs, 'entity_agent', len(stories), len(out), t0, 'ok', model='fast-ner-parser')
 
 
 def _log(existing, name, items_in, items_out, t0, status, *,
