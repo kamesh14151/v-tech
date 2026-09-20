@@ -224,20 +224,26 @@ class LLMGateway:
     Falls back to the next available provider if the primary is unconfigured.
     """
 
-    def _provider(self):
-        """Return the active provider based on LLM_PROVIDER setting."""
+    def _providers(self):
+        """Return list of available providers in priority order."""
+        providers = []
         p = settings.llm_provider.lower()
         if p == 'openai' and _openai.available:
-            return _openai
-        if p == 'anthropic' and _anthropic.available:
-            return _anthropic
-        if _gemini.available:
-            return _gemini
-        if _openai.available:
-            return _openai
-        if _anthropic.available:
-            return _anthropic
-        return None
+            providers.append(_openai)
+        elif p == 'anthropic' and _anthropic.available:
+            providers.append(_anthropic)
+        elif _gemini.available:
+            providers.append(_gemini)
+        
+        # Add remaining fallbacks
+        for candidate in [_gemini, _openai, _anthropic]:
+            if candidate.available and candidate not in providers:
+                providers.append(candidate)
+        return providers
+
+    def _provider(self):
+        provs = self._providers()
+        return provs[0] if provs else None
 
     @property
     def client(self):
@@ -245,25 +251,23 @@ class LLMGateway:
         return self._provider()
 
     def json(self, system: str, prompt: str, schema: dict) -> Any:
-        """
-        Synchronous JSON call — returns the parsed result dict/list.
-        Legacy interface kept for backward-compat with existing agents.
-        """
-        provider = self._provider()
-        if not provider:
-            raise RuntimeError('No LLM provider configured. Set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY.')
-        resp = provider.json(system, prompt, schema)
+        resp = self.json_with_meta(system, prompt, schema)
         return resp.result
 
     def json_with_meta(self, system: str, prompt: str, schema: dict) -> LLMResponse:
-        """
-        Full call returning LLMResponse (result + tokens + latency + cost).
-        Used by agents for observability logging.
-        """
-        provider = self._provider()
-        if not provider:
+        providers = self._providers()
+        if not providers:
             raise RuntimeError('No LLM provider configured.')
-        return provider.json(system, prompt, schema)
+        
+        last_exc = None
+        for prov in providers:
+            try:
+                return prov.json(system, prompt, schema)
+            except Exception as exc:
+                last_exc = exc
+                log.warning("LLM provider %s failed (%s). Trying fallback...", getattr(prov, 'model', 'unknown'), exc)
+        
+        raise last_exc or RuntimeError("All LLM providers failed.")
 
     def json_validated(
         self,
