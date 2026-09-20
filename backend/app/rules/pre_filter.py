@@ -116,6 +116,12 @@ def apply_rule_pre_filter(
     sports_query = any(sp in f"{query} {topic_domain}".lower() for sp in {"cricket", "sports", "ipl", "bcci", "ashes", "football", "match", "t20", "odi", "stadium"})
     sports_terms = {"cricket", "ashes", "test coach", "bcci", "ipl", "t20", "odi", "wicket", "batsman", "bowler", "stadium", "fifa", "premier league", "champions league", "fleming"}
 
+    target_query_words = [
+        w.lower().strip()
+        for w in query.split()
+        if len(w.strip()) > 1 and w.lower() not in ("within", "india", "global", "all", "tamil", "nadu", "national", "tech", "companies", "cinema", "entertainment", "sports", "banking", "fintech")
+    ]
+
     for a in articles:
         combined_text = f"{a.title} {a.description or ''}"
 
@@ -127,6 +133,11 @@ def apply_rule_pre_filter(
         # 1.5 Reject sports news if query/topic is not a sports search
         if not sports_query and any(sp in combined_text.lower() for sp in sports_terms):
             dropped_exclusion += 1
+            continue
+
+        # 1.6 Reject articles that do not contain the target topic query word when specified
+        if target_query_words and not any(t_word in combined_text.lower() for t_word in target_query_words):
+            dropped_keyword += 1
             continue
 
         # 2. Reject explicit exclusions (horoscopes, gossip, etc.)
@@ -158,6 +169,8 @@ def apply_rule_pre_filter(
             if a.id not in existing_ids and len(a.title.strip()) >= 15:
                 combined_text = f"{a.title} {a.description or ''}"
                 if not sports_query and any(sp in combined_text.lower() for sp in sports_terms):
+                    continue
+                if target_query_words and not any(t_word in combined_text.lower() for t_word in target_query_words):
                     continue
                 # Ensure supplemental article is relevant to effective keywords if specified
                 if effective_kws and not matches_keywords(combined_text, effective_kws):

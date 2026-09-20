@@ -53,6 +53,41 @@ function timeAgo(d: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function renderRichSummary(summaryText: string) {
+  if (!summaryText) return null;
+  const paragraphs = summaryText
+    .split("\n\n")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="space-y-3 font-sans text-xs sm:text-sm text-zinc-800 leading-relaxed">
+      {paragraphs.map((para, idx) => {
+        const cleanPara = para.replace(/\*\*/g, "");
+        if (cleanPara.startsWith("•") || cleanPara.startsWith("-")) {
+          const lines = cleanPara.split("\n").filter(Boolean);
+          return (
+            <ul key={idx} className="space-y-1.5 pl-1 my-2">
+              {lines.map((line, lIdx) => (
+                <li key={lIdx} className="flex items-start gap-2 text-zinc-800 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 shrink-0" />
+                  <span>{line.replace(/^[•\-]\s*/, "")}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={idx} className="text-zinc-800 font-medium leading-relaxed">
+            {cleanPara}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+
 export function ExecutiveDashboardView({
   onNavigate,
   onOpenDomainModal,
@@ -741,13 +776,16 @@ export function ExecutiveDashboardView({
                   <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-zinc-900 text-white flex items-center justify-center text-[9px] sm:text-[10px] font-bold shrink-0">1</span>
                   Executive Summary & Strategic Overview
                 </div>
-                <div className="p-4 sm:p-6 rounded-2xl border-l-4 border-emerald-600 bg-zinc-50 text-zinc-900 font-serif text-sm sm:text-base md:text-lg leading-relaxed shadow-sm">
-                  {report.executiveSummary && report.executiveSummary !== "No executive summary was generated."
-                    ? report.executiveSummary
-                    : report.topStories.length > 0
-                    ? `Over the ${recency}, Optimus AI ingested and verified ${report.totalArticles || report.topStories.length} stories across connected media sources. Primary highlights targeting "${topicQuery || topicDomain}" include: ${report.topStories.slice(0, 4).map(s => s.title).join("; ")}. System monitoring remains active.`
-                    : `No recent breaking news articles matching query '${topicQuery || topicDomain}' were found across connected news feeds. System monitoring remains active.`}
+                <div className="p-4 sm:p-6 rounded-2xl border-l-4 border-emerald-600 bg-zinc-50 text-zinc-900 shadow-sm">
+                  {renderRichSummary(
+                    report.executiveSummary && report.executiveSummary !== "No executive summary was generated."
+                      ? report.executiveSummary
+                      : report.topStories.length > 0
+                      ? `Over the ${recency}, Optimus AI ingested and verified ${report.totalArticles || report.topStories.length} stories across connected media sources.\n\nKey Highlights:\n${report.topStories.slice(0, 4).map(s => `• ${s.title} (${s.source})`).join("\n")}\n\nSystem monitoring remains active.`
+                      : `No recent breaking news articles matching query '${topicQuery || topicDomain}' were found across connected news feeds. System monitoring remains active.`
+                  )}
                 </div>
+
               </div>
 
               {/* Narrative Thematic Clusters */}

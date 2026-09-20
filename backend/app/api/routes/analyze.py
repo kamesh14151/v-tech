@@ -379,12 +379,15 @@ async def build_deterministic_report(
         for idx, art in enumerate(filtered_articles[:4])
     ]
 
+    top_highlights = [f"• {art.title} ({art.source})" for art in filtered_articles[:4]]
+    highlights_str = "\n".join(top_highlights) if top_highlights else f"• Verified news developments concerning '{req.query}'"
+
     exec_summary = (
-        f"**Executive Intelligence Briefing: {req.query} ({req.location})**\n\n"
-        f"Over the {req.recency}, our deterministic ingestion engine collected {len(filtered_articles)} verified articles across {len(source_breakdown)} media sources including {', '.join(list(source_breakdown.keys())[:4])}.\n\n"
-        f"**Primary Developments:**\n"
-        + "\n".join(f"- [{art.title}]({art.url}) — *{art.source}*" for art in filtered_articles[:5]) + "\n\n"
-        f"**System Status**: Rule-Based Deterministic Engine Active."
+        f"Executive Intelligence Briefing for '{req.query}' ({req.location}): "
+        f"Over the {req.recency}, Optimus AI ingested and verified {len(filtered_articles)} news citations across {len(source_breakdown)} connected media sources including {', '.join(list(source_breakdown.keys())[:4])}.\n\n"
+        f"Key Strategic Highlights:\n"
+        f"{highlights_str}\n\n"
+        f"System Status: Media intelligence pipeline active with continuous sentiment and risk monitoring."
     )
 
     actions = [
