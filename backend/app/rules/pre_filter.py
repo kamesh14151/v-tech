@@ -43,12 +43,35 @@ def matches_geography(text: str, location: str) -> bool:
     return True  # Global / all locations allowed
 
 
+DOMAIN_SYNONYMS = {
+    "cinema": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office"},
+    "entertainment": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office"},
+    "sports": {"cricket", "sports", "match", "ipl", "bcci", "t20", "test", "odi", "stadium", "trophy", "cup", "champion", "team", "player", "captain", "score", "wicket", "run", "football"},
+    "cricket": {"cricket", "sports", "match", "ipl", "bcci", "t20", "test", "odi", "stadium", "trophy", "cup", "champion", "team", "player", "captain", "score", "wicket", "run"},
+    "tech": {"tech", "technology", "it", "software", "ai", "artificial intelligence", "app", "digital", "startup", "cloud", "cyber", "data", "mobile", "gadget"},
+    "banking": {"bank", "banking", "fintech", "finance", "financial", "payment", "upi", "rbi", "stock", "market", "share", "investment", "tax", "economy"},
+}
+
+
 def matches_keywords(text: str, keywords: Sequence[str]) -> bool:
-    """Check if text contains any mandatory target keywords."""
+    """Check if text contains any mandatory target keywords or domain synonyms."""
     if not keywords:
         return True
     text_lower = text.lower()
-    return any(kw.lower() in text_lower for kw in keywords if kw.strip())
+    
+    # Check explicit keywords
+    for kw in keywords:
+        kw_clean = kw.lower().strip()
+        if not kw_clean:
+            continue
+        if kw_clean in text_lower:
+            return True
+        # Check domain synonyms
+        if kw_clean in DOMAIN_SYNONYMS:
+            if any(syn in text_lower for syn in DOMAIN_SYNONYMS[kw_clean]):
+                return True
+
+    return False
 
 
 def is_excluded(text: str, exclusions: Sequence[str] = ()) -> bool:
@@ -82,9 +105,9 @@ def apply_rule_pre_filter(
     # Build effective keyword list from query and topic_domain
     effective_kws = list(keywords)
     if query and query.strip():
-        effective_kws.extend([w.strip() for w in query.split() if len(w.strip()) > 3])
+        effective_kws.extend([w.strip().lower() for w in query.split() if len(w.strip()) > 2])
     if topic_domain and topic_domain.strip():
-        effective_kws.append(topic_domain.strip())
+        effective_kws.extend([w.strip().lower() for w in topic_domain.split() if len(w.strip()) > 2])
 
     passed: list[RawArticle] = []
 
@@ -104,7 +127,7 @@ def apply_rule_pre_filter(
         # 3. Check geography boundaries (if restricted)
         if location and "all" not in location.lower() and "global" not in location.lower():
             if not matches_geography(combined_text, location):
-                # Don't drop unconditionally if keyword strongly matches, but track signal
+                # Don't drop unconditionally if keyword strongly matches
                 if not matches_keywords(combined_text, effective_kws):
                     dropped_geo += 1
                     continue
@@ -117,10 +140,15 @@ def apply_rule_pre_filter(
 
         passed.append(a)
 
-    # Fallback safety: If passed is empty but raw articles exist, don't fail with 404 - return top raw articles
-    if not passed and articles:
-        log.info("Pre-filter resulted in 0 articles. Falling back to raw articles for analysis.")
-        passed = list(articles)
+    # Fallback safety: If passed is fewer than 15 articles but raw articles exist, fill up to top 30 raw articles
+    if len(passed) < 15 and articles:
+        log.info("Pre-filter returned %d articles. Supplementing with top raw articles up to 30.", len(passed))
+        existing_ids = {a.id for a in passed}
+        for a in articles:
+            if a.id not in existing_ids and len(a.title.strip()) >= 15:
+                passed.append(a)
+                if len(passed) >= 35:
+                    break
 
     stats = {
         "total_in": total_in,

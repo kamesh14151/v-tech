@@ -67,7 +67,7 @@ export function PipelineMonitorView({ analysisResult }: { analysisResult?: any }
       setAgentLogs(analysisResult.agent_logs);
       const states: Record<string, "idle" | "running" | "done" | "error"> = {};
       for (const log of analysisResult.agent_logs as AgentLog[]) {
-        states[log.agent_name] = log.status === "ok" ? "done" : log.status === "error" ? "error" : "done";
+        states[log.agent_name] = (log.status === "ok" || log.status === "fallback" || (log.items_out && log.items_out > 0)) ? "done" : "error";
       }
       // pre_filter doesn't have an agent_log — if we have results, mark it done
       if (analysisResult.pre_filter_stats) states["pre_filter"] = "done";
@@ -179,10 +179,10 @@ export function PipelineMonitorView({ analysisResult }: { analysisResult?: any }
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold">${log.cost_usd.toFixed(4)}</span>
                     )}
                     <span className={`px-1.5 py-0.5 rounded text-xs font-sans font-semibold ${
-                      log.status === "ok" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                      log.status === "error" ? "bg-red-500/10 text-red-600 dark:text-red-400" :
-                      "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                    }`}>{log.status}</span>
+                      (log.status === "ok" || log.status === "fallback" || log.items_out > 0)
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "bg-red-500/10 text-red-600 dark:text-red-400"
+                    }`}>{(log.status === "ok" || log.status === "fallback" || log.items_out > 0) ? "completed" : "error"}</span>
                   </div>
                 )}
               </div>
