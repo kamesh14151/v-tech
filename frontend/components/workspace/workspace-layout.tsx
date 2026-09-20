@@ -174,12 +174,16 @@ export function WorkspaceLayout({
   };
 
   const handleSaveDomainFromModal = async (selectedDomain: string, customTopic: string = "") => {
-    const finalDomain = selectedDomain || "Cricket & Sports";
+    const finalDomain = selectedDomain || "Cinema & Entertainment";
     const finalTopic = customTopic.trim();
+    if (finalTopic.length < 2) {
+      showToast("Topic keyword is mandatory (must be at least 2 characters)");
+      return;
+    }
     setTopicDomain(finalDomain);
     setTopicQuery(finalTopic);
     setIsDomainModalOpen(false);
-    showToast(`Configured: ${finalDomain}${finalTopic ? ` | "${finalTopic}"` : ""}`);
+    showToast(`Configured: ${finalDomain} | Topic: "${finalTopic}"`);
 
     try {
       await fetch("/api/preferences", {
@@ -630,31 +634,35 @@ export function WorkspaceLayout({
               </div>
             </div>
 
-            {/* Step 2: Custom News Title / Topic Query Entry */}
+            {/* Step 2: Custom News Title / Topic Query Entry (Mandatory) */}
             <div className="space-y-3 pt-3 border-t border-foreground/10">
-              <label className="block text-xs font-mono text-foreground font-semibold flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] flex items-center justify-center font-bold">2</span>
-                Enter Specific News Title / Topic (Optional):
+              <label className="block text-xs font-mono text-foreground font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] flex items-center justify-center font-bold">2</span>
+                  Enter Specific News Title / Topic <span className="text-red-500 font-bold ml-1">* (Required)</span>:
+                </span>
+                <span className="text-[10px] text-muted-foreground font-normal">Min 2 characters</span>
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
+                  required
                   value={modalCustomTopic}
                   onChange={(e) => setModalCustomTopic(e.target.value)}
-                  placeholder="e.g. GOAT movie release, PayU IPO, IPL auction 2026..."
+                  placeholder="e.g. vijay, GOAT movie release, PayU IPO..."
                   className="flex-1 px-4 py-2.5 text-xs font-mono rounded-xl border border-foreground/20 bg-background focus:outline-none focus:border-emerald-500"
                 />
                 <Button
                   onClick={() => handleSaveDomainFromModal(modalSelectedDomain, modalCustomTopic)}
-                  disabled={!modalSelectedDomain}
-                  className="bg-foreground text-background hover:bg-foreground/85 rounded-xl font-mono text-xs font-semibold px-6 py-2.5 shadow-md gap-2"
+                  disabled={!modalSelectedDomain || modalCustomTopic.trim().length < 2}
+                  className="bg-foreground text-background hover:bg-foreground/85 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-mono text-xs font-semibold px-6 py-2.5 shadow-md gap-2"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   Confirm Scope & Discover
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Tip: Leave the title/topic field empty to discover general breaking news across the selected <strong>{modalSelectedDomain}</strong> domain.
+                <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">Mandatory:</strong> Enter a specific topic, keyword, or breaking news title (at least 2 characters) for targeted media intelligence.
               </p>
             </div>
           </div>
