@@ -71,47 +71,59 @@ export function ExecutiveDashboardView({
   onAnalysisComplete?: (result: any) => void;
 }) {
   const { data: session } = useSession();
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [report, setReport] = useState<AnalysisResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [downloadingDocx, setDownloadingDocx] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const effectiveEmail = session?.user?.email || userEmail || "user@gmail.com";
-  const isGmailAuth = effectiveEmail.includes("@gmail.com");
-
-  const noiseFilteredPercent = report?.noiseFilteredPercent ?? (
-    report?.discoveredArticles && report.discoveredArticles > 0 && report.relevantArticles != null
-      ? Math.max(0, Math.min(100, Math.round((1 - report.relevantArticles / report.discoveredArticles) * 100)))
-      : null
-  );
-
-  const fetchDashboardData = useCallback(async () => {
-    if (!topicDomain) return;
-    setLoading(true);
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
     try {
-      const res = await fetch(
-        `/api/news?topic_domain=${encodeURIComponent(topicDomain)}&location=${encodeURIComponent(location)}&recency=${encodeURIComponent(recency)}&pageSize=12`
-      );
-      const data = await res.json();
-      setArticles(data.articles || []);
-    } catch (e) {
-      console.error(e);
+      const res = await fetch("/api/reports/history");
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryList(data.history || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch report history:", err);
     } finally {
-      setLoading(false);
+      setLoadingHistory(false);
     }
-  }, [topicDomain, location, recency]);
+  };
+
+  const loadPastReport = async (reportId: number) => {
+    setReportLoading(true);
+    setIsHistoryModalOpen(false);
+    try {
+      const res = await fetch(`/api/reports/${reportId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setReport(data);
+        onAnalysisComplete?.(data);
+      }
+    } catch (err) {
+      console.error("Failed to load report", err);
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   const generateReport = useCallback(async (forceFresh: boolean = false) => {
     if (!topicDomain) return;
 
     const cacheKey = `optimus_report_${topicDomain}_${location}_${recency}`;
 
-    // If not forcing fresh, check localStorage cache first
+    // If not forcing fresh, check database or localStorage cache first
     if (!forceFresh) {
       try {
+        const dbRes = await fetch("/api/reports/latest");
+        if (dbRes.ok) {
+          const dbData = await dbRes.json();
+          if (dbData && dbData.executiveSummary) {
+            setReport(dbData);
+            onAnalysisComplete?.(dbData);
+            return;
+          }
+        }
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const parsed = JSON.parse(cached);
@@ -120,7 +132,7 @@ export function ExecutiveDashboardView({
           return;
         }
       } catch (e) {
-        console.error("Cache read error:", e);
+        console.error("Cache / DB read notice:", e);
       }
     }
 
@@ -251,15 +263,83 @@ export function ExecutiveDashboardView({
 
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => { fetchDashboardData(); generateReport(); }}
+            onClick={() => { setIsHistoryModalOpen(true); fetchHistory(); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-full border border-foreground/15 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Clock className="w-3.5 h-3.5 text-blue-500" />
+            Report History
+          </button>
+          <button
+            onClick={() => { fetchDashboardData(); generateReport(true); }}
             disabled={loading || reportLoading}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-full border border-foreground/15 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-full bg-foreground text-background text-xs font-mono font-semibold hover:bg-foreground/85 transition-colors disabled:opacity-50 shadow-sm"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading || reportLoading ? "animate-spin" : ""}`} />
-            Refresh
+            Run Fresh Analysis
           </button>
         </div>
       </div>
+
+      {/* Report History Modal */}
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-2xl bg-card border border-foreground/15 rounded-3xl p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-foreground/10">
+              <div className="flex items-center gap-2 font-display text-lg font-semibold">
+                <Clock className="w-5 h-5 text-blue-500" />
+                Saved Report History
+              </div>
+              <button
+                onClick={() => setIsHistoryModalOpen(false)}
+                className="p-1 rounded-full hover:bg-foreground/10"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              All intelligence reports generated and saved in PostgreSQL database history. Click any report to view it immediately.
+            </p>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {loadingHistory ? (
+                <div className="py-12 text-center font-mono text-xs text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                  Loading saved reports history from DB...
+                </div>
+              ) : historyList.length === 0 ? (
+                <div className="py-12 text-center font-mono text-xs text-muted-foreground">
+                  No saved report history found yet.
+                </div>
+              ) : (
+                historyList.map((item: any) => (
+                  <div
+                    key={item.id}
+                    onClick={() => loadPastReport(item.id)}
+                    className="p-4 rounded-2xl border border-foreground/10 hover:border-foreground/25 bg-background/50 hover:bg-background cursor-pointer transition-all space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="font-semibold text-foreground text-sm">{item.query || item.topic_domain}</span>
+                      <span className="text-muted-foreground text-[11px]">
+                        {item.created_at ? new Date(item.created_at).toLocaleString() : ""}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {item.summary || "Saved intelligence dossier"}
+                    </p>
+                    <div className="flex items-center justify-between pt-1 text-[11px] font-mono text-muted-foreground">
+                      <span>Scope: {item.location} ({item.recency})</span>
+                      <span className="text-blue-500 font-semibold flex items-center gap-1">
+                        View Report →
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Scope & Delivery Status Bar */}
       <div className="p-3.5 sm:p-4 rounded-2xl border border-foreground/12 bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">

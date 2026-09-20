@@ -200,13 +200,66 @@ async def analyze(req: AnalyzeRequest):
     relevant_count = len(state.get('relevant_articles', []))
     noise_filtered = round(max(0, min(100, (1 - relevant_count / discovered_count) * 100)), 1) if discovered_count else None
 
+    response_data = {
+        'query': req.query,
+        'generatedAt': datetime.now(timezone.utc).isoformat(),
+        'runId': run_id,
+        'totalArticles': len(filtered_articles),
+        'sources': sorted({a.source for a in filtered_articles}),
+        'topicDomain': req.topic_domain or req.query,
+        'location': req.location,
+        'recency': req.recency,
+        'topStories': top_stories,
+        'themes': themes,
+        'risks': risks,
+        'sentiment': sentiment,
+        'executiveSummary': executive,
+        'recommendedActions': actions,
+        'markdown': md,
+        'agent_trace': agent_logs_payload,  # legacy compat
+        'agent_logs': agent_logs_payload,
+        'priority_breakdown': priority_breakdown,
+        'stories': stories_payload,
+        'alerts': alerts_payload,
+        'pre_filter_stats': pre_filter_stats,
+        'discoveredArticles': discovered_count,
+        'relevantArticles': relevant_count,
+        'noiseFilteredPercent': noise_filtered,
+        'sourceBreakdown': source_breakdown,
+        'sourcesCount': len(source_breakdown),
+    }
+
     # ── Persist to database ───────────────────────────────────────────
     try:
         with psycopg.connect(settings.database_url.replace('+psycopg', '')) as conn:
+            # Create saved_reports table if not exists
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS saved_reports (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER,
+                    user_email VARCHAR(255),
+                    query VARCHAR(300),
+                    topic_domain VARCHAR(150),
+                    location VARCHAR(100),
+                    recency VARCHAR(50),
+                    report_data JSONB NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_saved_reports_email ON saved_reports(user_email);
+                CREATE INDEX IF NOT EXISTS idx_saved_reports_created ON saved_reports(created_at DESC);
+                """
+            )
             # Master run record
             conn.execute(
                 'INSERT INTO agent_runs (request_id, query, status, trace) VALUES (%s, %s, %s, %s)',
                 (uuid.UUID(run_id), req.query, 'completed', json.dumps(agent_logs_payload)),
+            )
+            # Save report data for history & quick reloads
+            conn.execute(
+                """INSERT INTO saved_reports (query, topic_domain, location, recency, report_data, created_at)
+                   VALUES (%s, %s, %s, %s, %s, NOW())""",
+                (req.query, req.topic_domain or req.query, req.location, req.recency, json.dumps(response_data)),
             )
             # Per-agent observability logs
             for log_entry in agent_logs_payload:
@@ -265,31 +318,4 @@ async def analyze(req: AnalyzeRequest):
         except Exception as exc:
             log.warning('Notification dispatch failed: %s', exc)
 
-    return {
-        'query': req.query,
-        'generatedAt': datetime.now(timezone.utc).isoformat(),
-        'runId': run_id,
-        'totalArticles': len(filtered_articles),
-        'sources': sorted({a.source for a in filtered_articles}),
-        'topicDomain': req.topic_domain or req.query,
-        'location': req.location,
-        'recency': req.recency,
-        'topStories': top_stories,
-        'themes': themes,
-        'risks': risks,
-        'sentiment': sentiment,
-        'executiveSummary': executive,
-        'recommendedActions': actions,
-        'markdown': md,
-        'agent_trace': agent_logs_payload,  # legacy compat
-        'agent_logs': agent_logs_payload,
-        'priority_breakdown': priority_breakdown,
-        'stories': stories_payload,
-        'alerts': alerts_payload,
-        'pre_filter_stats': pre_filter_stats,
-        'discoveredArticles': discovered_count,
-        'relevantArticles': relevant_count,
-        'noiseFilteredPercent': noise_filtered,
-        'sourceBreakdown': source_breakdown,
-        'sourcesCount': len(source_breakdown),
-    }
+    return response_data

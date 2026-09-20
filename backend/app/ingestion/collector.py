@@ -192,8 +192,31 @@ def _fetch_rss_sync(source_name: str, feed_url: str, max_items: int = 15) -> lis
         return []
 
 
+async def collect_google_news_rss(query: str) -> list[RawArticle]:
+    """Fetch live Google News RSS search results for specific topic/query."""
+    if not query or not query.strip():
+        return []
+    import urllib.parse
+    q_encoded = urllib.parse.quote(query.strip())
+    urls = [
+        ("Google News (India)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"),
+        ("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"),
+    ]
+    loop = asyncio.get_event_loop()
+    tasks = [
+        loop.run_in_executor(None, _fetch_rss_sync, name, url, 20)
+        for name, url in urls
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    out: list[RawArticle] = []
+    for r in results:
+        if isinstance(r, list):
+            out.extend(r)
+    return out
+
+
 async def collect_rss_all() -> list[RawArticle]:
-    """Fetch all 15 live RSS feeds in parallel."""
+    """Fetch all 35+ live RSS feeds in parallel."""
     loop = asyncio.get_event_loop()
     tasks = [
         loop.run_in_executor(None, _fetch_rss_sync, name, url, 12)
@@ -220,8 +243,9 @@ async def collect_raw_articles(
         na_task = collect_newsapi(client, query, recency)
         gd_task = collect_guardian(client, query, recency)
         rss_task = collect_rss_all()
+        gnews_task = collect_google_news_rss(query)
 
-        results = await asyncio.gather(na_task, gd_task, rss_task, return_exceptions=True)
+        results = await asyncio.gather(na_task, gd_task, rss_task, gnews_task, return_exceptions=True)
 
     all_raw: list[RawArticle] = []
     for r in results:

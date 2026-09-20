@@ -14,6 +14,7 @@ from app.api.routes.alerts import router as alerts_router
 from app.api.routes.explain import router as explain_router
 from app.api.routes.jobs import router as jobs_router
 from app.api.routes.digest import router as digest_router
+from app.api.routes.reports import router as reports_router
 
 
 @asynccontextmanager
@@ -55,6 +56,7 @@ app.include_router(alerts_router, prefix=settings.api_prefix, tags=['alerts'])
 app.include_router(explain_router, prefix=settings.api_prefix, tags=['explainability'])
 app.include_router(jobs_router, prefix=settings.api_prefix, tags=['background-jobs'])
 app.include_router(digest_router, prefix=settings.api_prefix, tags=['digest'])
+app.include_router(reports_router, prefix=settings.api_prefix, tags=['reports'])
 
 
 @app.middleware('http')

@@ -117,6 +117,11 @@ def apply_rule_pre_filter(
 
         passed.append(a)
 
+    # Fallback safety: If passed is empty but raw articles exist, don't fail with 404 - return top raw articles
+    if not passed and articles:
+        log.info("Pre-filter resulted in 0 articles. Falling back to raw articles for analysis.")
+        passed = list(articles)
+
     stats = {
         "total_in": total_in,
         "total_passed": len(passed),
