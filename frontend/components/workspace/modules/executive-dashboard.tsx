@@ -81,6 +81,40 @@ export function ExecutiveDashboardView({
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [pipelineStage, setPipelineStage] = useState(0);
+  const [pipelineProgress, setPipelineProgress] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!reportLoading) {
+      setPipelineStage(0);
+      setPipelineProgress(0);
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedSeconds(elapsed);
+
+      if (elapsed < 4) {
+        setPipelineStage(0);
+        setPipelineProgress(Math.min(25, Math.round((elapsed / 4) * 25)));
+      } else if (elapsed < 9) {
+        setPipelineStage(1);
+        setPipelineProgress(25 + Math.min(25, Math.round(((elapsed - 4) / 5) * 25)));
+      } else if (elapsed < 16) {
+        setPipelineStage(2);
+        setPipelineProgress(50 + Math.min(30, Math.round(((elapsed - 9) / 7) * 30)));
+      } else {
+        setPipelineStage(3);
+        setPipelineProgress(80 + Math.min(18, Math.round(((elapsed - 16) / 10) * 18)));
+      }
+    }, 500);
+
+    return () => clearInterval(timer);
+  }, [reportLoading]);
 
   const effectiveEmail = session?.user?.email || userEmail || "user@gmail.com";
   const isGmailAuth = effectiveEmail.includes("@gmail.com");
@@ -180,8 +214,27 @@ export function ExecutiveDashboardView({
           recency,
         }),
       });
-      const data = await res.json();
+
+      let data: any = null;
       if (res.ok) {
+        data = await res.json().catch(() => null);
+      } else {
+        console.warn(`Analyze API returned status ${res.status}. Polling PostgreSQL database for finished report...`);
+        // If 504 Gateway Timeout or 503 error occurs, poll /api/reports/latest as the backend completes asynchronously
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise((r) => setTimeout(r, 4000));
+          const latestRes = await fetch("/api/reports/latest");
+          if (latestRes.ok) {
+            const latestData = await latestRes.json().catch(() => null);
+            if (latestData && latestData.executiveSummary) {
+              data = latestData;
+              break;
+            }
+          }
+        }
+      }
+
+      if (data && data.executiveSummary) {
         setReport(data);
         onAnalysisComplete?.(data);
         try {
@@ -189,7 +242,7 @@ export function ExecutiveDashboardView({
         } catch (err) {}
       }
     } catch (e) {
-      console.error(e);
+      console.error("Analysis execution notice:", e);
     } finally {
       setReportLoading(false);
     }
@@ -554,9 +607,78 @@ export function ExecutiveDashboardView({
           </div>
 
           {reportLoading ? (
-            <div className="py-10 text-center space-y-3">
-              <Loader2 className="w-7 h-7 mx-auto animate-spin text-emerald-600" />
-              <div className="text-xs font-mono text-zinc-600">Synthesizing Optimus Executive Intelligence Dossier...</div>
+            <div className="py-8 px-2 sm:px-4 space-y-6 max-w-2xl mx-auto">
+              <div className="space-y-2 text-center">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 font-mono text-xs font-bold">
+                  <Sparkles className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                  Multi-Agent Pipeline Active ({elapsedSeconds}s)
+                </div>
+                <h3 className="text-lg sm:text-xl font-display font-semibold text-zinc-900">
+                  Synthesizing Executive Intelligence Briefing
+                </h3>
+                <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                  Running automated news ingestion, rule pre-filtering, and LangGraph multi-agent orchestration for <strong>{topicDomain}</strong>.
+                </p>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-mono text-zinc-600 font-semibold">
+                  <span>Pipeline Execution Progress</span>
+                  <span className="text-emerald-700 font-bold">{pipelineProgress}%</span>
+                </div>
+                <div className="w-full h-3 rounded-full bg-zinc-200 overflow-hidden p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 transition-all duration-500 rounded-full shadow-sm"
+                    style={{ width: `${pipelineProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Step-by-Step Stage Cards */}
+              <div className="space-y-2.5 pt-1 text-left">
+                {[
+                  { stage: 0, title: "1. Multi-Source News Ingestion", desc: "Harvesting 35+ RSS feeds & Google News query search", icon: Globe },
+                  { stage: 1, title: "2. Deterministic Rule Pre-Filter", desc: "Filtering scope, recency & scoring source reliability", icon: ShieldCheck },
+                  { stage: 2, title: "3. LangGraph Multi-Agent Orchestration", desc: "NLP sentiment scoring, NER entity extraction & story clustering", icon: Layers },
+                  { stage: 3, title: "4. Executive Synthesis & DB Persistence", desc: "Formulating strategic briefing & saving report to database", icon: FileText },
+                ].map((s, idx) => {
+                  const Icon = s.icon;
+                  const isDone = pipelineStage > s.stage;
+                  const isCurrent = pipelineStage === s.stage;
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                        isCurrent
+                          ? "border-emerald-500/60 bg-emerald-500/5 shadow-sm"
+                          : isDone
+                          ? "border-emerald-500/20 bg-zinc-50 text-zinc-700"
+                          : "border-zinc-200 bg-zinc-50/40 text-zinc-400"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                          isCurrent ? "bg-emerald-600 text-white animate-pulse" : isDone ? "bg-emerald-500/20 text-emerald-700" : "bg-zinc-200 text-zinc-400"
+                        }`}>
+                          {isDone ? <CheckCircle2 className="w-4 h-4 text-emerald-700" /> : isCurrent ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Icon className="w-4 h-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className={`text-xs font-semibold truncate ${isCurrent ? "text-emerald-950 font-bold" : isDone ? "text-zinc-900 font-semibold" : "text-zinc-400"}`}>
+                            {s.title}
+                          </div>
+                          <div className="text-[11px] text-zinc-500 truncate">{s.desc}</div>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full shrink-0 ${
+                        isCurrent ? "bg-emerald-600 text-white" : isDone ? "bg-emerald-100 text-emerald-800" : "bg-zinc-200 text-zinc-500"
+                      }`}>
+                        {isCurrent ? "Processing" : isDone ? "Completed" : "Queued"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : report ? (
             <div className="space-y-6 sm:space-y-8">
