@@ -16,7 +16,10 @@ TN_SIGNALS = {
     "tamil nadu", "tamilnadu", "chennai", "coimbatore", "madurai",
     "tiruchirappalli", "trichy", "salem", "tirunelveli", "hosur",
     "kancheepuram", "vellore", "erode", "thanjavur", "dmk", "aiadmk",
-    "stalin", "cm stalin", "tidco", "sipcot", "tidel",
+    "stalin", "cm stalin", "tidco", "sipcot", "tidel", "kollywood",
+    "vijay", "ajith", "rajinikanth", "kamal", "suriya", "dhanush",
+    "sivakarthikeyan", "trisha", "nayanthara", "anirudh", "ar rahman",
+    "vetrimaran", "lokesh", "kanguva", "coolie", "goat", "viduthalai",
 }
 
 INDIA_SIGNALS = {
@@ -27,7 +30,6 @@ INDIA_SIGNALS = {
 
 DEFAULT_EXCLUSIONS = {
     "horoscope", "astrology", "crossword", "sudoku", "lottery",
-    "celebrity gossip", "fashion show", "box office collection",
 }
 
 
@@ -44,8 +46,8 @@ def matches_geography(text: str, location: str) -> bool:
 
 
 DOMAIN_SYNONYMS = {
-    "cinema": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office"},
-    "entertainment": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office"},
+    "cinema": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office", "starrer", "hero", "heroine", "cast", "review"},
+    "entertainment": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office", "starrer", "hero", "heroine", "cast", "review"},
     "sports": {"cricket", "sports", "match", "ipl", "bcci", "t20", "test", "odi", "stadium", "trophy", "cup", "champion", "team", "player", "captain", "score", "wicket", "run", "football"},
     "cricket": {"cricket", "sports", "match", "ipl", "bcci", "t20", "test", "odi", "stadium", "trophy", "cup", "champion", "team", "player", "captain", "score", "wicket", "run"},
     "tech": {"tech", "technology", "it", "software", "ai", "artificial intelligence", "app", "digital", "startup", "cloud", "cyber", "data", "mobile", "gadget"},
@@ -140,12 +142,16 @@ def apply_rule_pre_filter(
 
         passed.append(a)
 
-    # Fallback safety: If passed is fewer than 15 articles but raw articles exist, fill up to top 30 raw articles
+    # Fallback safety: If passed is fewer than 15 articles but raw articles exist, supplement ONLY with relevant articles
     if len(passed) < 15 and articles:
-        log.info("Pre-filter returned %d articles. Supplementing with top raw articles up to 30.", len(passed))
+        log.info("Pre-filter returned %d articles. Supplementing with matching raw articles.", len(passed))
         existing_ids = {a.id for a in passed}
         for a in articles:
             if a.id not in existing_ids and len(a.title.strip()) >= 15:
+                combined_text = f"{a.title} {a.description or ''}"
+                # Ensure supplemental article is relevant to effective keywords if specified
+                if effective_kws and not matches_keywords(combined_text, effective_kws):
+                    continue
                 passed.append(a)
                 if len(passed) >= 35:
                     break

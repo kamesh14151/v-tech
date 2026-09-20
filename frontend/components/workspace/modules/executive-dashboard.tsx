@@ -189,17 +189,24 @@ export function ExecutiveDashboardView({
         if (dbRes.ok) {
           const dbData = await dbRes.json();
           if (dbData && dbData.executiveSummary) {
-            setReport(dbData);
-            onAnalysisComplete?.(dbData);
-            return;
+            const reportQ = (dbData.query || dbData.topicDomain || "").toLowerCase();
+            const targetQ = effectiveQuery.toLowerCase();
+            const targetDomain = (topicDomain || "").toLowerCase();
+            if (reportQ && (reportQ.includes(targetQ) || targetQ.includes(reportQ) || reportQ.includes(targetDomain))) {
+              setReport(dbData);
+              onAnalysisComplete?.(dbData);
+              return;
+            }
           }
         }
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
           const parsed = JSON.parse(cached);
-          setReport(parsed);
-          onAnalysisComplete?.(parsed);
-          return;
+          if (parsed && parsed.executiveSummary) {
+            setReport(parsed);
+            onAnalysisComplete?.(parsed);
+            return;
+          }
         }
       } catch (e) {
         console.error("Cache / DB read notice:", e);

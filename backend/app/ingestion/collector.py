@@ -201,13 +201,21 @@ async def collect_google_news_rss(client: httpx.AsyncClient, query: str) -> list
     if not query or not query.strip():
         return []
     import urllib.parse
-    q_encoded = urllib.parse.quote(query.strip())
+    clean_q = (
+        query.replace("Within ", "")
+        .replace("(TN)", "Tamil Nadu")
+        .replace("(IN)", "India")
+        .replace("(", "")
+        .replace(")", "")
+        .strip()
+    )
+    q_encoded = urllib.parse.quote(clean_q)
     urls = [
         ("Google News (India)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-IN&gl=IN&ceid=IN:en"),
         ("Google News (Global)", f"https://news.google.com/rss/search?q={q_encoded}&hl=en-US&gl=US&ceid=US:en"),
     ]
     tasks = [
-        _fetch_single_rss(client, name, url, 20)
+        _fetch_single_rss(client, name, url, 25)
         for name, url in urls
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
