@@ -82,6 +82,15 @@ export function ExecutiveDashboardView({
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  const effectiveEmail = session?.user?.email || userEmail || "user@gmail.com";
+  const isGmailAuth = effectiveEmail.includes("@gmail.com");
+
+  const noiseFilteredPercent = report?.noiseFilteredPercent ?? (
+    report?.discoveredArticles && report.discoveredArticles > 0 && report.relevantArticles != null
+      ? Math.max(0, Math.min(100, Math.round((1 - report.relevantArticles / report.discoveredArticles) * 100)))
+      : null
+  );
+
   const fetchHistory = async () => {
     setLoadingHistory(true);
     try {
