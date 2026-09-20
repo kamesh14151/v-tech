@@ -7,6 +7,7 @@ export async function backendFetch(path: string, options: RequestInit = {}): Pro
   const envUrl = process.env.AGENT_BACKEND_URL;
   const candidates: string[] = [];
   if (envUrl) candidates.push(envUrl);
+  candidates.push("https://v-tech-1.onrender.com");
   candidates.push("http://localhost:8000");
   candidates.push("http://127.0.0.1:8000");
   candidates.push("http://backend:8000");
