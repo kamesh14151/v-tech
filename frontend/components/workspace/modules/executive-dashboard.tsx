@@ -71,6 +71,13 @@ export function ExecutiveDashboardView({
   onAnalysisComplete?: (result: any) => void;
 }) {
   const { data: session } = useSession();
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [report, setReport] = useState<AnalysisResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
