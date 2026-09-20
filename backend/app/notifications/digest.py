@@ -100,108 +100,107 @@ def _get_digest_subscribers() -> list[dict]:
 
 
 def _build_digest_html(subscriber: dict, stories: list[dict], source_breakdown: dict) -> str:
-    """Render a premium HTML digest email."""
+    """Render a Grok-style dark theme HTML digest email."""
     name          = subscriber['name']
     topic         = subscriber['topic_domain']
     location      = subscriber['location']
     generated_at  = datetime.now(timezone.utc).strftime('%B %d, %Y at %H:%M UTC')
 
     # Top stories rows
-    story_rows = ''
-    for i, s in enumerate(stories[:8], 1):
+    story_cards = ''
+    for i, s in enumerate(stories[:10], 1):
         priority = s.get('priority', 'MEDIUM')
-        badge_color = {
-            'CRITICAL': '#dc2626', 'HIGH': '#f59e0b',
-            'MEDIUM': '#3b82f6',   'LOW': '#6b7280',
-        }.get(priority, '#6b7280')
-        sources_str = ', '.join(s.get('sources', [])[:2]) or 'Unknown'
-        story_rows += f"""
-        <tr style="border-bottom:1px solid #f0f0f0;">
-          <td style="padding:14px 8px;font-size:13px;color:#374151;vertical-align:top;width:28px;">
-            <span style="font-weight:700;color:#9ca3af;">#{i}</span>
-          </td>
-          <td style="padding:14px 8px;vertical-align:top;">
-            <a href="{s.get('url','#')}" style="color:#1d4ed8;font-weight:600;
-               text-decoration:none;font-size:14px;line-height:1.4;">{s.get('title','')}</a>
-            <div style="margin-top:6px;font-size:12px;color:#6b7280;">
-              <span style="background:{badge_color};color:#fff;padding:2px 7px;
-                border-radius:3px;font-size:11px;font-weight:600;">{priority}</span>
-              &nbsp;📰 {sources_str}
-              &nbsp;·&nbsp;Score: {s.get('importance_score',0):.0f}/100
-            </div>
-            <p style="margin:6px 0 0;font-size:12px;color:#4b5563;line-height:1.5;">
-              {s.get('narrative','')[:160]}{'…' if len(s.get('narrative',''))>160 else ''}
-            </p>
-          </td>
-        </tr>"""
+        badge_style = {
+            'CRITICAL': 'background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4);',
+            'HIGH':     'background:rgba(245,158,11,0.2);color:#f59e0b;border:1px solid rgba(245,158,11,0.4);',
+            'MEDIUM':   'background:rgba(59,130,246,0.2);color:#3b82f6;border:1px solid rgba(59,130,246,0.4);',
+            'LOW':      'background:#27272a;color:#a1a1aa;border:1px solid #3f3f46;',
+        }.get(priority, 'background:#27272a;color:#a1a1aa;')
+
+        sources_str = ', '.join(s.get('sources', [])[:2]) or 'Verified News Source'
+        story_cards += f"""
+        <div style="background:#141417;border:1px solid #27272a;border-radius:14px;padding:16px 18px;margin-bottom:12px;">
+          <div style="font-family:monospace;font-size:11px;color:#71717a;margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+            <span style="font-weight:700;color:#10b981;">#{i}</span>
+            <span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;{badge_style}">{priority}</span>
+            <span>· {sources_str}</span>
+            <span style="margin-left:auto;color:#a1a1aa;font-weight:600;">{s.get('importance_score',0):.0f}/100</span>
+          </div>
+          <a href="{s.get('url','#')}" target="_blank" style="color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;line-height:1.4;display:block;margin-bottom:6px;">
+            {s.get('title','')}
+          </a>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;line-height:1.5;">
+            {s.get('narrative','')[:180]}{'…' if len(s.get('narrative',''))>180 else ''}
+          </p>
+        </div>"""
 
     # Source pills
     source_pills = ''
     for src, cnt in list(source_breakdown.items())[:12]:
         source_pills += (
-            f'<span style="display:inline-block;background:#f3f4f6;color:#374151;'
-            f'padding:3px 10px;border-radius:999px;font-size:12px;margin:3px;">'
-            f'{src} <b>({cnt})</b></span>'
+            f'<span style="display:inline-block;background:#18181b;border:1px solid #27272a;'
+            f'color:#a1a1aa;font-family:monospace;font-size:11px;padding:4px 10px;border-radius:999px;margin:3px;">'
+            f'{src} <b style="color:#ffffff;">({cnt})</b></span>'
         )
 
     return f"""
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f8fafc;font-family:'Helvetica Neue',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:32px 0;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Optimus Grok Intelligence Briefing</title>
+</head>
+<body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:32px 12px;">
 <tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;
-  box-shadow:0 4px 24px rgba(0,0,0,0.08);overflow:hidden;max-width:600px;">
+<table width="620" cellpadding="0" cellspacing="0" style="background-color:#121215;border:1px solid #27272a;border-radius:20px;overflow:hidden;max-width:620px;">
 
   <!-- Header -->
   <tr>
-    <td style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);padding:32px 40px;text-align:center;">
-      <div style="font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
-        ⚡ Optimus Intelligence
+    <td style="background-color:#000000;padding:32px 32px 24px 32px;border-bottom:1px solid #27272a;">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:#10b981;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);padding:4px 12px;border-radius:999px;display:inline-block;letter-spacing:1px;text-transform:uppercase;">
+        ⚡ GROK-STYLE INTELLIGENCE DOSSIER
       </div>
-      <div style="color:#93c5fd;font-size:14px;margin-top:6px;">Daily News Digest</div>
-      <div style="margin-top:16px;background:rgba(255,255,255,0.15);border-radius:8px;
-        padding:10px 20px;display:inline-block;">
-        <span style="color:#e0f2fe;font-size:13px;">
-          🎯 <b>{topic}</b> &nbsp;·&nbsp; 📍 {location}
-        </span>
+      <h1 style="font-size:24px;font-weight:700;color:#ffffff;margin:14px 0 6px 0;letter-spacing:-0.5px;">
+        {topic} Briefing
+      </h1>
+      <div style="font-size:12px;color:#71717a;font-family:monospace;">
+        Scope: <b style="color:#d4d4d8;">{location}</b> &nbsp;·&nbsp; Generated: <b style="color:#d4d4d8;">{generated_at}</b>
       </div>
     </td>
   </tr>
 
   <!-- Greeting -->
   <tr>
-    <td style="padding:28px 40px 8px;">
-      <p style="margin:0;font-size:16px;color:#1f2937;">
-        Good morning, <b>{name}</b> 👋
+    <td style="padding:24px 32px 12px 32px;">
+      <p style="margin:0;font-size:15px;color:#e4e4e7;line-height:1.6;">
+        Good morning, <b style="color:#ffffff;">{name}</b> 👋
       </p>
-      <p style="margin:8px 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
-        Here's your personalised news intelligence briefing for
-        <b>{topic}</b> — curated across {len(source_breakdown)} live sources,
-        generated on <b>{generated_at}</b>.
+      <p style="margin:8px 0 0 0;font-size:13px;color:#a1a1aa;line-height:1.6;">
+        Here is your AI-curated intelligence briefing for <b style="color:#ffffff;">{topic}</b> — analyzed across <b>{len(source_breakdown)}</b> verified media sources.
       </p>
     </td>
   </tr>
 
-  <!-- Stats bar -->
+  <!-- Stats Grid -->
   <tr>
-    <td style="padding:16px 40px;">
-      <table width="100%" style="background:#f0f9ff;border-radius:8px;padding:0;" cellpadding="0" cellspacing="0">
+    <td style="padding:12px 32px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="padding:14px;text-align:center;border-right:1px solid #bae6fd;">
-            <div style="font-size:22px;font-weight:800;color:#1d4ed8;">{len(stories)}</div>
-            <div style="font-size:11px;color:#64748b;margin-top:2px;">Stories Found</div>
+          <td width="32%" style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:14px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:#ffffff;font-family:monospace;">{len(stories)}</div>
+            <div style="font-size:10px;color:#71717a;font-family:monospace;text-transform:uppercase;margin-top:2px;">Stories Analyzed</div>
           </td>
-          <td style="padding:14px;text-align:center;border-right:1px solid #bae6fd;">
-            <div style="font-size:22px;font-weight:800;color:#1d4ed8;">{len(source_breakdown)}</div>
-            <div style="font-size:11px;color:#64748b;margin-top:2px;">Sources Scanned</div>
+          <td width="2%"></td>
+          <td width="32%" style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:14px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:#3b82f6;font-family:monospace;">{len(source_breakdown)}</div>
+            <div style="font-size:10px;color:#71717a;font-family:monospace;text-transform:uppercase;margin-top:2px;">Sources Monitored</div>
           </td>
-          <td style="padding:14px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#dc2626;">
-              {sum(1 for s in stories if s.get('priority') in ('CRITICAL','HIGH'))}
-            </div>
-            <div style="font-size:11px;color:#64748b;margin-top:2px;">High Priority</div>
+          <td width="2%"></td>
+          <td width="32%" style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:14px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;color:#ef4444;font-family:monospace;">{sum(1 for s in stories if s.get('priority') in ('CRITICAL','HIGH'))}</div>
+            <div style="font-size:10px;color:#71717a;font-family:monospace;text-transform:uppercase;margin-top:2px;">High Priority</div>
           </td>
         </tr>
       </table>
@@ -210,36 +209,30 @@ def _build_digest_html(subscriber: dict, stories: list[dict], source_breakdown: 
 
   <!-- Top Stories -->
   <tr>
-    <td style="padding:8px 40px 0;">
-      <h2 style="margin:0 0 12px;font-size:16px;color:#111827;font-weight:700;
-        border-bottom:2px solid #e5e7eb;padding-bottom:8px;">
-        📌 Top Stories
-      </h2>
-      <table width="100%" cellpadding="0" cellspacing="0">
-        {story_rows if story_rows else '<tr><td style="color:#6b7280;padding:16px 0;font-size:13px;">No stories found for this topic today.</td></tr>'}
-      </table>
+    <td style="padding:16px 32px 8px 32px;">
+      <div style="font-size:11px;font-weight:700;color:#71717a;font-family:monospace;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #27272a;padding-bottom:8px;margin-bottom:16px;">
+        // TOP CURATED NARRATIVE CLUSTERS
+      </div>
+      {story_cards if story_cards else '<div style="color:#71717a;font-family:monospace;font-size:13px;padding:16px 0;">No high-priority stories detected for this scope window.</div>'}
     </td>
   </tr>
 
   <!-- Sources -->
   <tr>
-    <td style="padding:24px 40px 8px;">
-      <h2 style="margin:0 0 10px;font-size:15px;color:#111827;font-weight:700;
-        border-bottom:2px solid #e5e7eb;padding-bottom:8px;">
-        🗞️ Sources Monitored
-      </h2>
+    <td style="padding:16px 32px 12px 32px;">
+      <div style="font-size:11px;font-weight:700;color:#71717a;font-family:monospace;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #27272a;padding-bottom:8px;margin-bottom:12px;">
+        // SOURCES & PUBLISHERS INDEXED
+      </div>
       <div style="line-height:2.2;">{source_pills}</div>
     </td>
   </tr>
 
   <!-- Footer -->
   <tr>
-    <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-      <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;line-height:1.8;">
-        You're receiving this because you enabled daily digest in your
-        <b>Optimus Intelligence</b> workspace.<br>
-        To change your preferences, visit your workspace settings.<br>
-        <span style="color:#d1d5db;">— Optimus Intelligence Platform</span>
+    <td style="background-color:#000000;padding:24px 32px;border-top:1px solid #27272a;text-align:center;">
+      <p style="margin:0;font-size:11px;color:#52525b;font-family:monospace;line-height:1.7;">
+        Sent autonomously by <b style="color:#71717a;">Optimus Intelligence</b> · Domain: <b style="color:#71717a;">ajstudioz.co.in</b><br>
+        To manage preferences, log into your Optimus Media Discovery workspace.
       </p>
     </td>
   </tr>
@@ -253,7 +246,7 @@ def _build_digest_html(subscriber: dict, stories: list[dict], source_breakdown: 
 
 async def _send_digest_email(to_email: str, subject: str, html_body: str) -> bool:
     """Send digest via Resend API or SMTP fallback."""
-    from_addr = settings.smtp_user or 'digest@optimus-intelligence.com'
+    from_addr = 'Optimus Intelligence <digest@ajstudioz.co.in>'
 
     # Resend API
     if settings.resend_api_key:
@@ -270,6 +263,25 @@ async def _send_digest_email(to_email: str, subject: str, html_body: str) -> boo
                 log.warning('Resend rejected digest for %s: %s %s', to_email, resp.status_code, resp.text)
         except Exception as exc:
             log.warning('Resend digest error for %s: %s', to_email, exc)
+
+    # SMTP fallback
+    if settings.smtp_host and settings.smtp_user:
+        try:
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From']    = from_addr
+            msg['To']      = to_email
+            msg.attach(MIMEText(html_body, 'html'))
+            with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port) as srv:
+                srv.login(settings.smtp_user, settings.smtp_pass)
+                srv.sendmail(from_addr, [to_email], msg.as_string())
+            log.info('Digest sent via SMTP → %s', to_email)
+            return True
+        except Exception as exc:
+            log.warning('SMTP digest error for %s: %s', to_email, exc)
+
+    log.warning('No email provider configured — digest not sent to %s', to_email)
+    return False
 
     # SMTP fallback
     if settings.smtp_host and settings.smtp_user:

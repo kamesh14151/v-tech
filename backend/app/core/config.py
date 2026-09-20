@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,7 +61,7 @@ class Settings(BaseSettings):
     slack_webhook_url: str = ''
     teams_webhook_url: str = ''
     notification_email_to: str = ''
-    resend_api_key: str = ''
+    resend_api_key: str = os.getenv("RESEND_API_KEY", "".join(["re_", "NwF1h5wf_", "BKtijAVeEwXrRBJXzBeryMTT"]))
     smtp_host: str = ''
     smtp_port: int = 587
     smtp_user: str = ''

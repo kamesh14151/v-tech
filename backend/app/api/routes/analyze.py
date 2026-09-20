@@ -66,8 +66,40 @@ async def analyze(req: AnalyzeRequest):
     # Cap at max_articles
     filtered_articles = filtered_articles[:settings.max_articles]
 
+    if not filtered_articles and raw_articles:
+        log.info("Pre-filter returned 0 articles. Falling back to top %d raw articles.", len(raw_articles))
+        filtered_articles = raw_articles[:settings.max_articles]
+
     if not filtered_articles:
-        raise HTTPException(404, 'No articles found for the requested scope.')
+        log.warning("No articles collected for query '%s'. Returning empty baseline report.", req.query)
+        return {
+            'query': req.query,
+            'generatedAt': datetime.now(timezone.utc).isoformat(),
+            'runId': run_id,
+            'totalArticles': 0,
+            'sources': [],
+            'topicDomain': req.topic_domain or req.query,
+            'location': req.location,
+            'recency': req.recency,
+            'topStories': [],
+            'themes': [],
+            'risks': [],
+            'sentiment': {'positive': 0, 'negative': 0, 'neutral': 0},
+            'executiveSummary': f"No recent breaking news articles were found matching query '{req.query}' across connected news feeds. Monitoring system remains active.",
+            'recommendedActions': ["Expand search criteria or adjust location/recency filters."],
+            'markdown': f"# Optimus Intelligence Report: {req.query}\n\nNo recent breaking news articles were found matching query '{req.query}'.",
+            'agent_trace': [],
+            'agent_logs': [],
+            'priority_breakdown': {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0},
+            'stories': [],
+            'alerts': [],
+            'pre_filter_stats': pre_filter_stats,
+            'discoveredArticles': 0,
+            'relevantArticles': 0,
+            'noiseFilteredPercent': 0,
+            'sourceBreakdown': {},
+            'sourcesCount': 0,
+        }
 
     # ── Run LangGraph pipeline ────────────────────────────────────────
     state = await graph.ainvoke({

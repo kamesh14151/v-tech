@@ -169,20 +169,78 @@ async def send_email_alert(alert: Alert, recipient: str | None = None) -> bool:
         return False
 
     subject = f'[{alert.priority} ALERT] {alert.title}'
-    html_body = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <h2 style="color: {'#dc2626' if alert.priority == 'CRITICAL' else '#f59e0b'};">
-            {'🚨' if alert.priority == 'CRITICAL' else '⚠️'} {alert.priority} News Alert
-        </h2>
-        <h3><a href="{alert.url}" style="color: #2563eb;">{alert.title}</a></h3>
-        <table style="border-collapse: collapse; width: 100%;">
-            <tr><td style="padding: 8px; font-weight: bold;">Score</td><td style="padding: 8px;">{alert.importance_score}/10</td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Sources</td><td style="padding: 8px;">{', '.join(alert.sources)}</td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Reason</td><td style="padding: 8px;">{alert.reason}</td></tr>
-        </table>
-        <p style="color: #6b7280; font-size: 12px;">Generated at {alert.triggered_at} | Story: {alert.story_id}</p>
-    </div>
-    """
+    priority_color = '#ef4444' if alert.priority == 'CRITICAL' else '#f59e0b'
+    badge_bg = 'rgba(239, 68, 68, 0.15)' if alert.priority == 'CRITICAL' else 'rgba(245, 158, 11, 0.15)'
+    
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{subject}</title>
+</head>
+<body style="margin: 0; padding: 24px; background-color: #09090b; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; background-color: #121215; border: 1px solid #27272a; border-radius: 12px; overflow: hidden;">
+        <tr>
+            <td style="padding: 24px; border-bottom: 1px solid #27272a;">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td>
+                            <span style="display: inline-block; background-color: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 9999px; letter-spacing: 0.5px;">
+                                OPTIMUS SYSTEM ALERT
+                            </span>
+                        </td>
+                        <td align="right">
+                            <span style="font-family: monospace; color: #71717a; font-size: 12px;">{alert.triggered_at}</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 24px;">
+                <div style="margin-bottom: 16px;">
+                    <span style="display: inline-block; background-color: {badge_bg}; color: {priority_color}; border: 1px solid {priority_color}; font-size: 12px; font-weight: 800; text-transform: uppercase; padding: 4px 12px; border-radius: 6px;">
+                        {'🚨' if alert.priority == 'CRITICAL' else '⚠️'} {alert.priority} PRIORITY
+                    </span>
+                </div>
+                
+                <h1 style="color: #ffffff; font-size: 20px; font-weight: 700; line-height: 1.4; margin: 0 0 16px 0;">
+                    <a href="{alert.url}" style="color: #ffffff; text-decoration: none;">{alert.title}</a>
+                </h1>
+                
+                <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="6" style="font-size: 13px; color: #e4e4e7;">
+                        <tr>
+                            <td width="100" style="color: #71717a; font-family: monospace; font-weight: 600;">IMPORTANCE</td>
+                            <td style="color: {priority_color}; font-weight: 700;">{alert.importance_score} / 10</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #71717a; font-family: monospace; font-weight: 600;">SOURCES</td>
+                            <td style="color: #a1a1aa;">{', '.join(alert.sources)}</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #71717a; font-family: monospace; font-weight: 600;">TRIGGER</td>
+                            <td style="color: #a1a1aa;">{alert.reason}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <a href="{alert.url}" style="display: inline-block; width: 100%; box-sizing: border-box; text-align: center; background-color: #ffffff; color: #09090b; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 8px; text-decoration: none;">
+                    Read Full Story &rarr;
+                </a>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 16px 24px; background-color: #09090b; border-top: 1px solid #27272a; text-align: center;">
+                <p style="color: #71717a; font-size: 11px; font-family: monospace; margin: 0;">
+                    // OPTIMUS INTELLIGENCE SYSTEM &bull; STORY ID: {alert.story_id}
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
 
     # Try Resend API first
     if settings.resend_api_key:
@@ -192,7 +250,7 @@ async def send_email_alert(alert: Alert, recipient: str | None = None) -> bool:
                     'https://api.resend.com/emails',
                     headers={'Authorization': f'Bearer {settings.resend_api_key}'},
                     json={
-                        'from': 'alerts@optimus-intelligence.com',
+                        'from': 'Optimus Intelligence <alerts@ajstudioz.co.in>',
                         'to': [to_email],
                         'subject': subject,
                         'html': html_body,
