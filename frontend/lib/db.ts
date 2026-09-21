@@ -46,6 +46,7 @@ export async function query<T = any>(text: string, params: any[] = []): Promise<
       client.release();
     }
   } catch (err: any) {
+    console.error("DB Query error:", err.message);
     // If PostgreSQL is unreachable, use local dev store fallback
     return handleDevFallback<T>(text, params);
   }

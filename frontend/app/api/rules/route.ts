@@ -22,6 +22,7 @@ async function ensureRulesTable() {
       );
     `);
     await query(`ALTER TABLE rules ADD COLUMN IF NOT EXISTS user_email VARCHAR(255);`).catch(() => {});
+    await query(`ALTER TABLE rules ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`).catch(() => {});
   } catch (e) {
     console.error("ensureRulesTable notice:", e);
   }
