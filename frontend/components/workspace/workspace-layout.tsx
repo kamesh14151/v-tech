@@ -122,6 +122,7 @@ export function WorkspaceLayout({
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
+  const [isIndustryModalOpen, setIsIndustryModalOpen] = useState(false);
   const [isCustomDateModalOpen, setIsCustomDateModalOpen] = useState(false);
   const [customFromDate, setCustomFromDate] = useState("2026-09-01");
   const [customToDate, setCustomToDate] = useState("2026-09-20");
@@ -183,8 +184,30 @@ export function WorkspaceLayout({
     searchRef.current?.focus();
   };
 
+  const handleSelectIndustryDomain = async (domainName: string) => {
+    setTopicDomain(domainName);
+    setModalSelectedDomain(domainName);
+    setIsIndustryModalOpen(false);
+    showToast(`Industry domain updated: ${domainName}`);
+    try {
+      await fetch("/api/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic_domain: domainName,
+          topic_query: topicQuery,
+          location,
+          recency,
+          target_email: effectiveEmail,
+        }),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleSaveDomainFromModal = async (selectedDomain: string, customTopic: string = "") => {
-    const finalDomain = selectedDomain || "Cinema & Entertainment";
+    const finalDomain = selectedDomain || topicDomain || "Cinema & Entertainment";
     const finalTopic = customTopic.trim();
     if (finalTopic.length < 2) {
       showToast("Topic keyword is mandatory (must be at least 2 characters)");
@@ -342,6 +365,16 @@ export function WorkspaceLayout({
             <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
           </button>
 
+          {/* 1b. Select Industry Domain Button */}
+          <button
+            onClick={() => setIsIndustryModalOpen(true)}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-foreground/15 bg-foreground/5 text-xs font-mono text-foreground hover:bg-foreground/10 transition-all truncate shadow-sm"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="font-semibold text-[11px] sm:text-xs truncate">Domain: {topicDomain}</span>
+            <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+          </button>
+
           {/* 2. Location Scope Pill */}
           <div className="relative hidden md:block">
             <button
@@ -480,7 +513,6 @@ export function WorkspaceLayout({
         </form>
       </div>
 
-
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar */}
@@ -617,6 +649,23 @@ export function WorkspaceLayout({
               )}
             </div>
 
+            {/* Selectable Domain Option Card */}
+            <div className="p-4 rounded-2xl border border-foreground/15 bg-foreground/3 flex items-center justify-between gap-3 font-mono text-xs">
+              <div>
+                <div className="text-[10px] text-muted-foreground uppercase font-semibold">Active Industry Domain</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">{topicDomain}</div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsIndustryModalOpen(true)}
+                className="rounded-xl text-xs font-mono gap-1.5 border-foreground/20"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Select Domain in Modal
+              </Button>
+            </div>
+
             {/* Primary Step: Enter News Title / Topic */}
             <div className="space-y-3">
               <label className="block text-xs font-mono text-foreground font-semibold flex items-center justify-between">
@@ -635,6 +684,11 @@ export function WorkspaceLayout({
                   onChange={(e) => setModalCustomTopic(e.target.value)}
                   placeholder="e.g. google gemini, vijay, PayU IPO, IPL 2026..."
                   className="flex-1 px-4 py-3 text-xs font-mono rounded-xl border border-foreground/20 bg-background focus:outline-none focus:border-blue-500 shadow-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && modalCustomTopic.trim().length >= 2) {
+                      handleSaveDomainFromModal(modalSelectedDomain, modalCustomTopic);
+                    }
+                  }}
                 />
                 <Button
                   onClick={() => handleSaveDomainFromModal(modalSelectedDomain, modalCustomTopic)}
@@ -674,6 +728,69 @@ export function WorkspaceLayout({
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SEPARATE DEDICATED INDUSTRY DOMAIN SELECTION MODAL */}
+      {isIndustryModalOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-3xl border border-foreground/20 bg-background/95 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl space-y-6 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-foreground/10">
+              <div>
+                <span className="text-xs font-mono font-bold text-amber-500 uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  Industry Domain Selection
+                </span>
+                <h2 className="text-xl sm:text-2xl font-display font-semibold text-foreground">
+                  Select Industry Domain / Vertical
+                </h2>
+                <p className="text-xs text-muted-foreground font-mono mt-1">
+                  Choose the industry domain to contextualize media intelligence, risk scoring, and briefing emails.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsIndustryModalOpen(false)}
+                className="p-1 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {TOPIC_DOMAIN_OPTIONS.map((opt) => {
+                const isSelected = topicDomain === opt.name;
+                return (
+                  <button
+                    key={opt.name}
+                    type="button"
+                    onClick={() => handleSelectIndustryDomain(opt.name)}
+                    className={`p-4 rounded-2xl border text-left transition-all space-y-1.5 ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-500/10 shadow-md ring-1 ring-blue-500"
+                        : "border-foreground/15 bg-background hover:border-foreground/40 hover:bg-foreground/5"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xl">{opt.emoji}</span>
+                      {isSelected && <Check className="w-4 h-4 text-blue-500 font-bold" />}
+                    </div>
+                    <div className="font-display font-semibold text-sm text-foreground">{opt.name}</div>
+                    <div className="text-[11px] font-mono text-muted-foreground leading-snug">{opt.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-foreground/10">
+              <Button
+                variant="outline"
+                onClick={() => setIsIndustryModalOpen(false)}
+                className="rounded-xl font-mono text-xs px-6"
+              >
+                Close
+              </Button>
             </div>
           </div>
         </div>
@@ -770,3 +887,4 @@ export function WorkspaceLayout({
     </div>
   );
 }
+
