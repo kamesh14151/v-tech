@@ -120,12 +120,21 @@ export function ExecutiveDashboardView({
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [pipelineStage, setPipelineStage] = useState(0);
   const [pipelineProgress, setPipelineProgress] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [queryValidation, setQueryValidation] = useState<{
+    correctedQuery: string;
+    wasCorrection: boolean;
+    confidence: number;
+    explanation: string;
+    suggestedLanguages?: string[];
+    rawQuery?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (initialReport && !report) {
@@ -275,6 +284,15 @@ export function ExecutiveDashboardView({
       let data: any = null;
       if (res.ok) {
         data = await res.json().catch(() => null);
+        // Capture LLM validation info
+        if (data?.queryValidation) {
+          setQueryValidation({
+            ...data.queryValidation,
+            rawQuery: data.rawQuery || effectiveQuery,
+          });
+        } else {
+          setQueryValidation(null);
+        }
       } else {
         console.warn(`Analyze API returned status ${res.status}. Polling PostgreSQL database for finished report...`);
         for (let attempt = 0; attempt < 6; attempt++) {
@@ -370,13 +388,64 @@ export function ExecutiveDashboardView({
     if (!report) return;
     setDownloadingDocx(true);
     try {
-      const blob = await generateWordDocx(report);
+      // Build a safe export payload — fill in any missing fields the docx lib requires
+      const positiveCount = articles.filter((a) => a.sentiment === "positive").length;
+      const negativeCount = articles.filter((a) => a.sentiment === "negative").length;
+      const neutralCount = Math.max(0, (report.totalArticles || articles.length) - positiveCount - negativeCount);
+
+      const exportData = {
+        query: report.query || topicQuery || topicDomain || "Intelligence Report",
+        generatedAt: (
+          report.generatedAt ||
+          (report as any).created_at ||
+          (report as any).generated_at ||
+          new Date().toISOString()
+        ),
+        totalArticles: report.totalArticles ?? report.topStories?.length ?? 0,
+        sources: report.sources || [],
+        topicDomain: report.topicDomain || topicDomain || "",
+        location: report.location || location || "Global (All)",
+        recency: report.recency || recency || "Last 24 Hours",
+        executiveSummary: report.executiveSummary || "Optimus AI media intelligence pipeline active.",
+        recommendedActions: report.recommendedActions?.length
+          ? report.recommendedActions
+          : ["Monitor live news feeds.", "Review source reliability.", "Track sentiment evolution."],
+        themes: report.themes?.length
+          ? report.themes
+          : (report.topStories || []).slice(0, 4).map((s: any) => ({
+              name: s.title,
+              count: 1,
+              description: `Coverage from ${s.source}.`,
+            })),
+        risks: report.risks?.length
+          ? report.risks
+          : [],
+        topStories: (report.topStories || []).map((s: any) => ({
+          title: s.title || "Untitled",
+          source: s.source || "Verified Source",
+          url: s.url || "",
+          relevanceScore: s.relevanceScore ?? 80,
+          publishedAt: s.publishedAt || new Date().toISOString(),
+        })),
+        sentiment: {
+          positive: positiveCount,
+          negative: negativeCount,
+          neutral: neutralCount,
+        },
+      };
+
+      const blob = await generateWordDocx(exportData);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `optimus-intelligence-report-${report.query.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
+      a.download = `optimus-intelligence-report-${(exportData.query).replace(/[^a-z0-9]/gi, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.docx`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e: any) {
+      console.error("Word export error:", e);
+      alert(`Word export failed: ${e?.message || "Unknown error"}`);
     } finally {
       setDownloadingDocx(false);
     }
@@ -398,10 +467,79 @@ export function ExecutiveDashboardView({
     }
   };
 
-  const handleSendEmail = () => {
-    setEmailSent(true);
-    setTimeout(() => setEmailSent(false), 4000);
+  const [emailDeliveredTo, setEmailDeliveredTo] = useState("");
+
+  const handleSendEmail = async () => {
+    if (!report) {
+      alert("No report available to send. Please run analysis first.");
+      return;
+    }
+    setEmailSending(true);
+    try {
+      const effectiveQ = (topicQuery || topicDomain || "Fintech & Banking").trim();
+      const dateStr = new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+      // Build a clean HTML body from the report data
+      const storiesHtml = (report.topStories || []).slice(0, 8).map((s: any, i: number) => `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #f4f4f5;vertical-align:top">
+            <a href="${s.url || "#"}" target="_blank" style="font-size:13px;font-weight:600;color:#18181b;text-decoration:none">[${i + 1}] ${s.title || "Untitled"}</a>
+            <p style="margin:3px 0 0;font-size:12px;color:#71717a">${s.source || "Verified Source"} · ${s.publishedAt ? new Date(s.publishedAt).toLocaleDateString("en-IN") : "Recent"} · ${s.relevanceScore ?? 80}% match</p>
+          </td>
+        </tr>`).join("");
+
+      const actionsHtml = (report.recommendedActions || []).slice(0, 4).map((a: string, i: number) => `
+        <tr><td style="padding:6px 0;font-size:13px;color:#18181b"><strong>${i + 1}.</strong> ${a}</td></tr>`).join("");
+
+      const bodyHtml = `
+        <h2 style="margin:0 0 8px;font-size:20px;font-weight:800;color:#111827">Executive Briefing: ${topicDomain}</h2>
+        <p style="margin:0 0 20px;font-size:12px;color:#6b7280;font-family:monospace">
+          Scope: <strong>${location}</strong> &nbsp;·&nbsp; Window: <strong>${recency}</strong> &nbsp;·&nbsp; Generated: <strong>${dateStr}</strong>
+        </p>
+        <div style="background:#f9fafb;border-left:3px solid #10b981;padding:14px 16px;border-radius:0 8px 8px 0;margin-bottom:20px">
+          <p style="margin:0;font-size:13px;line-height:1.7;color:#18181b">${report.executiveSummary || "Optimus AI media intelligence pipeline active."}</p>
+        </div>
+        <h3 style="margin:20px 0 8px;font-size:14px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:0.5px">📰 Top Citations</h3>
+        <table width="100%" cellpadding="0" cellspacing="0">${storiesHtml}</table>
+        <h3 style="margin:20px 0 8px;font-size:14px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:0.5px">⚡ Strategic Recommendations</h3>
+        <table width="100%" cellpadding="0" cellspacing="0">${actionsHtml}</table>
+        <p style="margin:20px 0 0;font-size:11px;color:#9ca3af;border-top:1px solid #f4f4f5;padding-top:12px">
+          Automated dispatch by Optimus AI · ${dateStr} · Query: "${effectiveQ}"
+        </p>`;
+
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: effectiveEmail,
+          subject: `Optimus Intelligence Briefing: ${topicDomain} — ${dateStr}`,
+          html: bodyHtml,
+        }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      if (res.ok && resData.success) {
+        // Track real delivery address (may differ due to Resend free-tier restriction)
+        const deliveredTo = resData.targetEmail || effectiveEmail;
+        setEmailDeliveredTo(deliveredTo);
+        setEmailSent(true);
+        setTimeout(() => { setEmailSent(false); setEmailDeliveredTo(""); }, 6000);
+        // Inform user if email was rerouted
+        if (resData.note) {
+          setTimeout(() => alert(`ℹ️ ${resData.note}`), 600);
+        }
+      } else {
+        console.error("Email send error:", resData);
+        alert(`Email delivery failed: ${resData.error || "Unknown error. Check RESEND_API_KEY."}`);
+      }
+    } catch (err: any) {
+      console.error("handleSendEmail error:", err);
+      alert(`Email error: ${err?.message || "Network error"}`);
+    } finally {
+      setEmailSending(false);
+    }
   };
+
 
   const stats = {
     total: articles.length,
@@ -591,7 +729,7 @@ export function ExecutiveDashboardView({
         <div className="p-3.5 sm:p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 text-xs font-mono">
             <Check className="w-4 h-4 shrink-0" />
-            <span><strong>Dispatched!</strong> Intelligence Briefing and PDF report sent to <strong>{effectiveEmail}</strong>.</span>
+            <span><strong>Dispatched!</strong> Intelligence Briefing sent to <strong>{emailDeliveredTo || effectiveEmail}</strong>.</span>
           </div>
           <span className="text-[10px] font-mono uppercase font-bold bg-emerald-500/20 px-2 py-0.5 rounded shrink-0">Sent</span>
         </div>
@@ -657,6 +795,62 @@ export function ExecutiveDashboardView({
         </div>
       </div>
 
+
+      {/* ── LLM Query Correction Banner ─────────────────────────────────────── */}
+      {queryValidation?.wasCorrection && (
+        <div className="flex flex-col sm:flex-row sm:items-start gap-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-500/30 px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-2 shrink-0 mt-0.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 dark:bg-amber-500 shrink-0">
+              <svg className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </span>
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-400 font-mono uppercase tracking-wider">
+              Query Auto-Corrected
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+              <span className="line-through text-amber-500 dark:text-amber-400/70 mr-1">
+                {queryValidation.rawQuery}
+              </span>
+              <span className="mx-1 text-amber-500">→</span>
+              <span className="font-bold text-amber-900 dark:text-amber-100">
+                &ldquo;{queryValidation.correctedQuery}&rdquo;
+              </span>
+            </p>
+            <p className="text-[11px] text-amber-700/80 dark:text-amber-300/70 mt-0.5 italic">
+              {queryValidation.explanation}
+              {" "}
+              <span className="not-italic font-semibold">
+                Confidence: {queryValidation.confidence}%
+              </span>
+            </p>
+            {queryValidation.suggestedLanguages && queryValidation.suggestedLanguages.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
+                <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 uppercase tracking-wider">News languages:</span>
+                {queryValidation.suggestedLanguages.map((lang) => (
+                  <span
+                    key={lang}
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 border border-amber-300/60 dark:border-amber-600/40 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300"
+                  >
+                    <Globe className="w-2.5 h-2.5" />
+                    {lang}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setQueryValidation(null)}
+            className="shrink-0 text-amber-400 hover:text-amber-600 dark:text-amber-500 dark:hover:text-amber-300 text-lg leading-none self-start mt-0.5"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* OPTIMUS EXECUTIVE INTELLIGENCE DOSSIER (PDF EXPORTABLE) */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -693,10 +887,15 @@ export function ExecutiveDashboardView({
             <Button
               variant="outline"
               onClick={handleSendEmail}
+              disabled={emailSending || !report}
               className="flex-1 sm:flex-initial rounded-full font-mono text-xs gap-1.5 border-foreground/15 text-foreground hover:bg-foreground/5"
             >
-              <Send className="w-3.5 h-3.5" />
-              Send to Gmail
+              {emailSending
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : emailSent
+                ? <Check className="w-3.5 h-3.5 text-emerald-500" />
+                : <Send className="w-3.5 h-3.5" />}
+              {emailSending ? "Sending..." : emailSent ? "Sent!" : "Send to Gmail"}
             </Button>
           </div>
         </div>

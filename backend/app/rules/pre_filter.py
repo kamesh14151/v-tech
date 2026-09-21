@@ -164,22 +164,25 @@ def apply_rule_pre_filter(
 
         passed.append(a)
 
-    # Fallback safety: If passed is fewer than 15 articles but raw articles exist, supplement ONLY with relevant articles
-    if len(passed) < 15 and articles:
-        log.info("Pre-filter returned %d articles. Supplementing with matching raw articles.", len(passed))
+    # Fallback safety: If passed is fewer than 8 articles, relax geography constraint only
+    # but KEEP keyword and domain match requirements strict.
+    if len(passed) < 8 and articles:
+        log.info("Pre-filter returned %d articles. Relaxing geo-filter to find more keyword-matching articles.", len(passed))
         existing_ids = {a.id for a in passed}
         for a in articles:
             if a.id not in existing_ids and len(a.title.strip()) >= 15:
                 combined_text = f"{a.title} {a.description or ''}"
+                # Always enforce: must not be sports noise
                 if not sports_query and any(sp in combined_text.lower() for sp in sports_terms):
                     continue
+                # Always enforce: target query words must be present
                 if target_query_words and not any(t_word in combined_text.lower() for t_word in target_query_words):
                     continue
-                # Ensure supplemental article is relevant to effective keywords if specified
+                # Always enforce: domain synonym must match
                 if effective_kws and not matches_keywords(combined_text, effective_kws):
                     continue
                 passed.append(a)
-                if len(passed) >= 35:
+                if len(passed) >= 30:
                     break
 
     stats = {

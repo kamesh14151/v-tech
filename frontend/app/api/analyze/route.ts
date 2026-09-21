@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { backendFetch } from "@/lib/backend-fetch";
 
-async function fetchLiveNewsForQuery(query: string, location: string, recency: string) {
+async function fetchLiveNewsForQuery(
+  query: string,
+  location: string,
+  recency: string,
+  languages?: string[]
+) {
   let cleanQ = query;
   for (const noise of ["Within ", "India (National)", "India National", "Tamil Nadu (TN)", "(TN)", "(National)", "Global (All)"]) {
     cleanQ = cleanQ.replace(noise, "").trim();
@@ -26,9 +31,9 @@ async function fetchLiveNewsForQuery(query: string, location: string, recency: s
   } else if (qLower.includes("fintech") || qLower.includes("bank")) {
     searchTerms.push(`${cleanQ} UPI RBI payments`);
     searchTerms.push(`${cleanQ} Razorpay digital banking`);
-  } else if (qLower.includes("cinema") || qLower.includes("movie") || qLower.includes("entertainment")) {
-    searchTerms.push(`${cleanQ} Kollywood box office`);
-    searchTerms.push(`${cleanQ} OTT release theatre`);
+  } else if (qLower.includes("cinema") || qLower.includes("movie") || qLower.includes("entertainment") || qLower.includes("bollywood") || qLower.includes("kollywood") || qLower.includes("ott")) {
+    searchTerms.push(`${cleanQ} box office release OTT streaming`);
+    searchTerms.push(`${cleanQ} Bollywood Kollywood Hindi film`);
   } else {
     searchTerms.push(`${cleanQ} news`);
     searchTerms.push(`${cleanQ} updates`);
@@ -39,6 +44,28 @@ async function fetchLiveNewsForQuery(query: string, location: string, recency: s
     for (const term of searchTerms) {
       urls.push(`https://news.google.com/rss/search?q=${encodeURIComponent(term)}${tbsParam}&hl=en-IN&gl=IN&ceid=IN:en`);
       urls.push(`https://news.google.com/rss/search?q=${encodeURIComponent(term)}${tbsParam}&hl=en-US&gl=US&ceid=US:en`);
+    }
+
+    // ── Multilingual Google News RSS feeds based on LLM language suggestion ──
+    const LANG_LOCALE_MAP: Record<string, { hl: string; gl: string; ceid: string }> = {
+      Tamil:     { hl: "ta", gl: "IN", ceid: "IN:ta" },
+      Hindi:     { hl: "hi", gl: "IN", ceid: "IN:hi" },
+      Kannada:   { hl: "kn", gl: "IN", ceid: "IN:kn" },
+      Telugu:    { hl: "te", gl: "IN", ceid: "IN:te" },
+      Malayalam: { hl: "ml", gl: "IN", ceid: "IN:ml" },
+      Bengali:   { hl: "bn", gl: "IN", ceid: "IN:bn" },
+      Marathi:   { hl: "mr", gl: "IN", ceid: "IN:mr" },
+    };
+    if (languages && languages.length > 0) {
+      for (const lang of languages) {
+        const locale = LANG_LOCALE_MAP[lang];
+        if (locale) {
+          // Use the primary search term for language-specific discovery
+          urls.push(
+            `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQ)}${tbsParam}&hl=${locale.hl}&gl=${locale.gl}&ceid=${locale.ceid}`
+          );
+        }
+      }
     }
 
     const responses = await Promise.all(
@@ -73,6 +100,13 @@ async function fetchLiveNewsForQuery(query: string, location: string, recency: s
         }
         if (!src) src = "Verified Media Source";
 
+        // ── Relevance gate: skip articles with no keyword overlap with cleanQ ──
+        const titleLower = rawTitle.toLowerCase();
+        const queryWords = cleanQ.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+        const isRelevant = queryWords.some((w) => titleLower.includes(w));
+        if (!isRelevant) continue;
+        // ─────────────────────────────────────────────────────────────────────
+
         topStories.push({
           title: rawTitle,
           url: link,
@@ -81,9 +115,9 @@ async function fetchLiveNewsForQuery(query: string, location: string, recency: s
           relevanceScore: Math.max(78, 96 - topStories.length * 2),
           priority: topStories.length < 2 ? "CRITICAL" : topStories.length < 5 ? "HIGH" : "MEDIUM",
         });
-        if (topStories.length >= 12) break;
+        if (topStories.length >= 15) break;
       }
-      if (topStories.length >= 12) break;
+      if (topStories.length >= 15) break;
     }
   } catch (err) {
     console.warn("Live news fallback harvest notice:", err);
@@ -142,7 +176,49 @@ export async function POST(req: NextRequest) {
       body = {};
     }
 
-    const query = String(body.query || body.topic_domain || "mutual funds").trim();
+    const rawQuery = String(body.query || body.topic_domain || "mutual funds").trim();
+
+    // ── LLM Query Validator: correct typos / normalise before analysis ───────
+    let query = rawQuery;
+    let queryValidation: {
+      correctedQuery: string;
+      wasCorrection: boolean;
+      confidence: number;
+      explanation: string;
+      suggestedLanguages?: string[];
+    } | null = null;
+
+    try {
+      const validationRes = await fetch(
+        new URL("/api/validate-query", req.url).toString(),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // forward the session cookie so auth() works in the sub-call
+            cookie: req.headers.get("cookie") || "",
+          },
+          body: JSON.stringify({ query: rawQuery, topicDomain: body.topic_domain }),
+        }
+      );
+      if (validationRes.ok) {
+        const vData = await validationRes.json().catch(() => null);
+        if (vData && vData.correctedQuery) {
+          queryValidation = {
+            correctedQuery: vData.correctedQuery,
+            wasCorrection: vData.wasCorrection || false,
+            confidence: vData.confidence ?? 90,
+            explanation: vData.explanation || "",
+            suggestedLanguages: vData.suggestedLanguages || ["English"],
+          };
+          // Use the corrected query for all downstream calls
+          query = vData.correctedQuery;
+        }
+      }
+    } catch (vErr) {
+      console.warn("Query validation notice (proceeding with raw query):", vErr);
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     try {
       const controller = new AbortController();
@@ -172,7 +248,7 @@ export async function POST(req: NextRequest) {
           data.generatedAt = new Date().toISOString();
         }
         if (!data.topStories || data.topStories.length === 0) {
-          const liveStories = await fetchLiveNewsForQuery(query, body.location || "Global (All)", body.recency || "Last 24 Hours");
+          const liveStories = await fetchLiveNewsForQuery(query, body.location || "Global (All)", body.recency || "Last 24 Hours", queryValidation?.suggestedLanguages);
           if (liveStories.length > 0) {
             data.topStories = liveStories;
             data.totalArticles = liveStories.length;
@@ -193,6 +269,11 @@ export async function POST(req: NextRequest) {
             data.executiveSummary = `Over the ${body.recency || "Last 24 Hours"}, Optimus AI ingested and verified ${liveStories.length} breaking news story citations matching "${query}" in ${body.location || "Global (All)"}. Primary developments include: ${topTitles}. System monitoring remains active.`;
           }
         }
+        // Attach validation metadata to the backend response
+        if (queryValidation) {
+          data.queryValidation = queryValidation;
+          data.rawQuery = rawQuery;
+        }
         return NextResponse.json(data);
       }
     } catch (error) {
@@ -202,7 +283,7 @@ export async function POST(req: NextRequest) {
     // Guaranteed live news harvest fallback when backend is offline or slow
     let liveStories: any[] = [];
     try {
-      liveStories = await fetchLiveNewsForQuery(query, body.location || "Global (All)", body.recency || "Last 24 Hours");
+      liveStories = await fetchLiveNewsForQuery(query, body.location || "Global (All)", body.recency || "Last 24 Hours", queryValidation?.suggestedLanguages);
     } catch (err) {
       console.warn("fetchLiveNewsForQuery notice:", err);
       liveStories = [];
@@ -216,6 +297,7 @@ export async function POST(req: NextRequest) {
     const nowIso = new Date().toISOString();
     return NextResponse.json({
       query,
+      rawQuery,
       generatedAt: nowIso,
       created_at: nowIso,
       totalArticles: liveStories.length,
@@ -248,6 +330,7 @@ export async function POST(req: NextRequest) {
       relevantArticles: liveStories.length,
       sourceBreakdown: {},
       sourcesCount: liveStories.length,
+      queryValidation: queryValidation || null,
     });
   } catch (globalErr: any) {
     console.error("Critical error in POST /api/analyze:", globalErr);
