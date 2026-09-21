@@ -39,18 +39,21 @@ export async function GET(req: NextRequest) {
   try {
     await ensureRulesTable();
 
-    // 1. Fetch rules matching this user email or user_id
+    // Stamp unassigned rules with userEmail if null
+    await query("UPDATE rules SET user_email = $1 WHERE user_email IS NULL", [userEmail]).catch(() => {});
+
+    // Fetch rules matching this user email or null
     let rules = await query(
-      "SELECT * FROM rules WHERE LOWER(user_email) = LOWER($1) OR (user_id IS NOT NULL AND user_id = $2) ORDER BY id ASC",
-      [userEmail, userId || -1]
+      "SELECT * FROM rules WHERE LOWER(user_email) = LOWER($1) OR user_email IS NULL ORDER BY id ASC",
+      [userEmail]
     );
 
-    // 2. Fallback: if no rules for this specific email yet, query all existing rules
+    // Fallback: query all rules
     if (!rules || rules.length === 0) {
       rules = await query("SELECT * FROM rules ORDER BY id ASC");
     }
 
-    // 3. If database table is completely empty, seed initial real rules for this user
+    // Seed initial rules if empty
     if (!rules || rules.length === 0) {
       const seedRule1 = await query(
         `INSERT INTO rules (user_id, user_email, name, description, condition_json, action_json, is_active, triggered_count, last_triggered)
@@ -157,7 +160,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
   const userEmail = session.user.email || "kamesh14151@gmail.com";
   const body = await req.json();
   const { id, name, description, condition_json, action_json, is_active } = body;
@@ -166,30 +168,56 @@ export async function PUT(req: NextRequest) {
     await ensureRulesTable();
 
     if (id && !isNaN(Number(id))) {
-      const cleanActionJson = action_json ? { ...action_json, email: userEmail } : null;
+      const cleanActionJson = {
+        ...(action_json || {}),
+        email: userEmail,
+        action: action_json?.action || `Email Briefing to ${userEmail}`,
+      };
 
-      const rows = await query(
-        `UPDATE rules SET
-           name = COALESCE($1, name),
-           description = COALESCE($2, description),
-           condition_json = COALESCE($3::jsonb, condition_json),
-           action_json = COALESCE($4::jsonb, action_json),
-           is_active = COALESCE($5, is_active),
-           user_email = COALESCE($6, user_email),
-           updated_at = NOW()
-         WHERE id = $7 RETURNING *`,
-        [
-          name || null,
-          description || null,
-          condition_json ? JSON.stringify(condition_json) : null,
-          cleanActionJson ? JSON.stringify(cleanActionJson) : null,
-          typeof is_active === "boolean" ? is_active : null,
-          userEmail,
-          Number(id),
-        ]
-      );
+      let rows: any[] = [];
+      if (typeof is_active === "boolean") {
+        rows = await query(
+          `UPDATE rules SET
+             name = $1,
+             description = $2,
+             condition_json = $3::jsonb,
+             action_json = $4::jsonb,
+             is_active = $5,
+             user_email = $6,
+             updated_at = NOW()
+           WHERE id = $7 RETURNING *`,
+          [
+            name,
+            description || `Automated briefing for ${userEmail}`,
+            JSON.stringify(condition_json || {}),
+            JSON.stringify(cleanActionJson),
+            is_active,
+            userEmail,
+            Number(id),
+          ]
+        );
+      } else {
+        rows = await query(
+          `UPDATE rules SET
+             name = $1,
+             description = $2,
+             condition_json = $3::jsonb,
+             action_json = $4::jsonb,
+             user_email = $5,
+             updated_at = NOW()
+           WHERE id = $6 RETURNING *`,
+          [
+            name,
+            description || `Automated briefing for ${userEmail}`,
+            JSON.stringify(condition_json || {}),
+            JSON.stringify(cleanActionJson),
+            userEmail,
+            Number(id),
+          ]
+        );
+      }
 
-      return NextResponse.json({ rule: rows[0], success: true });
+      return NextResponse.json({ rule: rows && rows[0] ? rows[0] : null, success: true });
     }
 
     return NextResponse.json({ error: "Missing rule ID" }, { status: 400 });
@@ -205,7 +233,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
   const userEmail = session.user.email || "kamesh14151@gmail.com";
 
   const body = await req.json();
@@ -221,8 +248,8 @@ export async function PATCH(req: NextRequest) {
     // 1. Toggle Active / Paused status
     if (typeof is_active === "boolean" && id && !isNaN(Number(id))) {
       const rows = await query(
-        "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
-        [is_active, Number(id)]
+        "UPDATE rules SET is_active = $1, user_email = $2, updated_at = NOW() WHERE id = $3 RETURNING *",
+        [is_active, userEmail, Number(id)]
       );
       return NextResponse.json({ rule: rows && rows[0] ? rows[0] : null, success: true, is_active });
     }

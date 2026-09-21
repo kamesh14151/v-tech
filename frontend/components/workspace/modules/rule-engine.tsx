@@ -112,7 +112,7 @@ export function RuleEngineView() {
     setTopicDomain(rule.topicDomain);
     setGeography(rule.geography);
     setRecency(rule.recency);
-    setMandatoryTerms(rule.mandatoryTerms === "All Sector Signals" ? "" : rule.mandatoryTerms);
+    setMandatoryTerms(rule.mandatoryTerms === "All Sector Signals" || rule.mandatoryTerms === "All Topic Signals" ? "" : rule.mandatoryTerms);
     setExcludedTerms(rule.excludedTerms === "None" ? "" : rule.excludedTerms);
     setTargetEmailState(rule.targetEmail || session?.user?.email || "kamesh14151@gmail.com");
 
@@ -131,9 +131,20 @@ export function RuleEngineView() {
       else if (sched.includes("09:00 AM")) setScheduleTime("09:00 AM IST");
       else if (sched.includes("10:00 AM")) setScheduleTime("10:00 AM IST");
       else if (sched.includes("12:00 PM")) setScheduleTime("12:00 PM IST");
+      else if (sched.includes("05:00 PM")) setScheduleTime("05:00 PM IST");
       else if (sched.includes("06:00 PM")) setScheduleTime("06:00 PM IST");
       else if (sched.includes("08:00 PM")) setScheduleTime("08:00 PM IST");
-      else setScheduleTime("08:00 AM IST");
+      else if (sched.includes("at ")) {
+        const customPart = sched.split("at ")[1]?.replace(" IST", "").trim();
+        if (customPart) {
+          setScheduleTime("Custom");
+          setCustomTimeInput(customPart);
+        } else {
+          setScheduleTime("08:00 AM IST");
+        }
+      } else {
+        setScheduleTime("08:00 AM IST");
+      }
     }
     setIsModalOpen(true);
   };
@@ -142,7 +153,7 @@ export function RuleEngineView() {
     e.preventDefault();
     if (!name.trim()) return;
 
-    let finalSchedule = "Daily at 8:00 AM IST";
+    let finalSchedule = "Daily at 08:00 AM IST";
     if (scheduleType === "Real-time") {
       finalSchedule = "Real-time on Critical Risk";
     } else if (scheduleType === "Twice Daily") {
@@ -185,7 +196,22 @@ export function RuleEngineView() {
             action_json,
           }),
         });
-        if (res.ok) await fetchRules();
+        if (res.ok) {
+          const data = await res.json();
+          if (data.rule) {
+            setRules(prev => prev.map(r => r.id === editingRule.id ? {
+              ...r,
+              name: data.rule.name || name,
+              topicDomain: data.rule.condition_json?.topic_domain || topicDomain,
+              geography: data.rule.condition_json?.geography || geography,
+              schedule: data.rule.condition_json?.schedule || finalSchedule,
+              recency: data.rule.condition_json?.recency || recency,
+              mandatoryTerms: data.rule.condition_json?.mandatoryTerms || mandatoryTerms || "All Sector Signals",
+              excludedTerms: data.rule.condition_json?.excludedTerms || excludedTerms || "None",
+            } : r));
+          }
+          await fetchRules();
+        }
       } else {
         // Create new rule via POST /api/rules
         const res = await fetch("/api/rules", {
@@ -256,7 +282,10 @@ export function RuleEngineView() {
         body: JSON.stringify({ id, is_active: newIsActive }),
       });
       if (res.ok) {
-        await fetchRules();
+        const data = await res.json();
+        if (data.rule) {
+          setRules(prev => prev.map(r => r.id === id ? { ...r, status: data.rule.is_active ? "Active" : "Paused" } : r));
+        }
       }
     } catch (e) {
       console.error(e);
