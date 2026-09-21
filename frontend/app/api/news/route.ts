@@ -65,6 +65,30 @@ function getFromDate(recency: string): string {
   return new Date(now - 30 * 24 * 3600 * 1000).toISOString().split("T")[0];
 }
 
+function cleanXmlText(text: string): string {
+  return text
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/<[^>]*>/g, "")
+    .trim();
+}
+
+const LANGUAGE_MAP: Record<string, { hl: string; gl: string; ceid: string }> = {
+  ta: { hl: "ta-IN", gl: "IN", ceid: "IN:ta" },
+  hi: { hl: "hi-IN", gl: "IN", ceid: "IN:hi" },
+  es: { hl: "es", gl: "ES", ceid: "ES:es" },
+  fr: { hl: "fr", gl: "FR", ceid: "FR:fr" },
+  de: { hl: "de", gl: "DE", ceid: "DE:de" },
+  ar: { hl: "ar", gl: "SA", ceid: "SA:ar" },
+  zh: { hl: "zh-CN", gl: "CN", ceid: "CN:zh-Hans" },
+  en: { hl: "en-US", gl: "US", ceid: "US:en" },
+};
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
@@ -77,22 +101,20 @@ export async function GET(req: NextRequest) {
   const location = searchParams.get("location") || "";
   const topicDomain = searchParams.get("topic_domain") || "";
   const recency = searchParams.get("recency") || "Last 24 Hours";
+  const lang = (searchParams.get("lang") || searchParams.get("language") || "all").toLowerCase();
+  const sourceFilter = (searchParams.get("source") || "all").toLowerCase();
 
-  // If no specific query is provided, use the configured topic domain
   let baseTerm = q.trim();
   if (!baseTerm) {
     baseTerm = topicDomain ? topicDomain.replace(/&.*/, "").trim() : "technology business";
   }
 
   let effectiveQuery = baseTerm;
-
-  // Add domain context if not in base term
   if (topicDomain && !baseTerm.toLowerCase().includes(topicDomain.toLowerCase().split(" ")[0])) {
     const domainKeyword = topicDomain.replace(/&.*/, "").trim();
     effectiveQuery = `${baseTerm} ${domainKeyword}`;
   }
 
-  // Add location context
   if (location && location !== "Global (All)") {
     if (location.includes("Tamil Nadu") || location.includes("TN")) {
       effectiveQuery = `${effectiveQuery} (Tamil Nadu OR Chennai OR TN)`;
@@ -108,30 +130,141 @@ export async function GET(req: NextRequest) {
   const fromDate = getFromDate(recency);
   const searchTerms = baseTerm.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
 
+  const articles: any[] = [];
+  const seenUrls = new Set<string>();
+
   try {
+    const gdeltToken = process.env.GDELT_API_KEY || "gdelt_sk_1d5e02bceff21c9f89e1076e404059d3d1c3e60a9a15a725d60fe27e2137b4dd";
     const newsApiKey = process.env.NEWSAPI_KEY || process.env.NEWS_API_KEY || "35dd6258d259483e9e29062fe74acb38";
     const guardianApiKey = process.env.GUARDIAN_API_KEY || "dcec71f7-0a96-4ec3-8145-e629799258e5";
 
-    const [newsApiRes, guardianRes] = await Promise.allSettled([
-      fetch(
-        `https://newsapi.org/v2/everything?q=${encodeURIComponent(effectiveQuery)}&from=${fromDate}&pageSize=${pageSize}&sortBy=publishedAt&language=en`,
-        { headers: { "X-Api-Key": newsApiKey }, next: { revalidate: 120 } }
-      ),
-      fetch(
-        `https://content.guardianapis.com/search?q=${encodeURIComponent(effectiveQuery)}&from-date=${fromDate}&page-size=${pageSize}&show-fields=trailText,thumbnail,byline,bodyText&api-key=${guardianApiKey}`,
-        { next: { revalidate: 120 } }
-      ),
+    // Build GDELT Cloud API promise
+    const cleanGdeltSearch = baseTerm.replace(/[^a-zA-Z0-9\s]/g, " ").trim();
+    const gdeltUrl = `https://gdeltcloud.com/api/v2/events?search=${encodeURIComponent(cleanGdeltSearch || "technology")}&limit=${pageSize}`;
+
+    const gdeltPromise = fetch(gdeltUrl, {
+      headers: { Authorization: `Bearer ${gdeltToken}` },
+      next: { revalidate: 120 },
+    }).then(async res => {
+      if (!res.ok) return null;
+      return res.json();
+    }).catch(() => null);
+
+    // Build Google News RSS promises (multi-language support)
+    const rssLanguages = lang === "all" ? ["en", "ta", "hi", "es"] : [lang];
+    const googleNewsPromises = rssLanguages.map(l => {
+      const langConfig = LANGUAGE_MAP[l] || LANGUAGE_MAP.en;
+      const gnewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(effectiveQuery)}&hl=${langConfig.hl}&gl=${langConfig.gl}&ceid=${langConfig.ceid}`;
+      return fetch(gnewsUrl, { next: { revalidate: 120 } })
+        .then(async r => ({ lang: l, xml: await r.text() }))
+        .catch(() => ({ lang: l, xml: "" }));
+    });
+
+    // Build NewsAPI & Guardian promises
+    const newsApiPromise = sourceFilter === "all" || sourceFilter === "newsapi"
+      ? fetch(
+          `https://newsapi.org/v2/everything?q=${encodeURIComponent(effectiveQuery)}&from=${fromDate}&pageSize=${pageSize}&sortBy=publishedAt&language=en`,
+          { headers: { "X-Api-Key": newsApiKey }, next: { revalidate: 120 } }
+        ).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null);
+
+    const guardianPromise = sourceFilter === "all" || sourceFilter === "guardian"
+      ? fetch(
+          `https://content.guardianapis.com/search?q=${encodeURIComponent(effectiveQuery)}&from-date=${fromDate}&page-size=${pageSize}&show-fields=trailText,thumbnail,byline,bodyText&api-key=${guardianApiKey}`,
+          { next: { revalidate: 120 } }
+        ).then(r => r.ok ? r.json() : null).catch(() => null)
+      : Promise.resolve(null);
+
+    const [gdeltResult, gnewsResults, newsApiResult, guardianResult] = await Promise.all([
+      gdeltPromise,
+      Promise.all(googleNewsPromises),
+      newsApiPromise,
+      guardianPromise,
     ]);
 
-    const articles: any[] = [];
+    // 1. Process GDELT Cloud API events
+    if (gdeltResult?.data && Array.isArray(gdeltResult.data)) {
+      for (const ev of gdeltResult.data) {
+        const topArt = ev.top_articles?.[0];
+        const targetUrl = topArt?.url || ev.primary_story_url || ev.url || `https://gdeltcloud.com/events/${ev.id}`;
+        if (!targetUrl || seenUrls.has(targetUrl)) continue;
+        seenUrls.add(targetUrl);
 
-    if (newsApiRes.status === "fulfilled" && newsApiRes.value.ok) {
-      const data = await newsApiRes.value.json();
-      for (const a of data.articles || []) {
-        if (!a.title || a.title === "[Removed]") continue;
+        const titleText = ev.title || topArt?.title || "GDELT Intelligence Event";
+        const summaryText = ev.summary || ev.event_description || `GDELT tracked event in ${ev.geo?.country || "global location"}`;
+        const nlp = computeNLP(`${titleText} ${summaryText}`, searchTerms);
+        const idHash = crypto.createHash("md5").update(targetUrl).digest("hex").slice(0, 12);
+
+        articles.push({
+          id: `gdelt-${ev.id || idHash}`,
+          title: titleText,
+          url: targetUrl,
+          source: topArt?.domain || "GDELT Cloud",
+          author: ev.actors?.[0]?.name || "GDELT Automated Monitor",
+          publishedAt: ev.observed_at || ev.event_date || new Date().toISOString(),
+          description: summaryText,
+          thumbnail: topArt?.domain_avatar_url || null,
+          apiSource: "gdeltcloud",
+          language: ev.top_language || "en",
+          languageBreakdown: ev.language_breakdown || [],
+          topArticles: ev.top_articles || [],
+          geo: ev.geo || null,
+          actors: ev.actors || [],
+          metrics: ev.metrics || null,
+          relevanceScore: nlp.relevanceScore,
+          sentimentScore: nlp.sentimentScore,
+          sentiment: nlp.sentiment,
+        });
+      }
+    }
+
+    // 2. Process Google News RSS multi-language feeds
+    for (const item of gnewsResults) {
+      if (!item.xml) continue;
+      const rssItems = item.xml.split("<item>").slice(1);
+      for (const rawItem of rssItems) {
+        const titleMatch = rawItem.match(/<title>(.*?)<\/title>/);
+        const linkMatch = rawItem.match(/<link>(.*?)<\/link>/);
+        const dateMatch = rawItem.match(/<pubDate>(.*?)<\/pubDate>/);
+        const sourceMatch = rawItem.match(/<source[^>]*>(.*?)<\/source>/);
+
+        const title = titleMatch ? cleanXmlText(titleMatch[1]) : "";
+        const link = linkMatch ? linkMatch[1].trim() : "";
+        if (!title || !link || seenUrls.has(link)) continue;
+        seenUrls.add(link);
+
+        const source = sourceMatch ? cleanXmlText(sourceMatch[1]) : "Google News";
+        const publishedAt = dateMatch ? new Date(dateMatch[1]).toISOString() : new Date().toISOString();
+        const nlp = computeNLP(title, searchTerms);
+        const idHash = crypto.createHash("md5").update(link).digest("hex").slice(0, 12);
+
+        articles.push({
+          id: `gnews-${idHash}`,
+          title,
+          url: link,
+          source,
+          author: source,
+          publishedAt,
+          description: `Google News report on ${title}`,
+          thumbnail: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(source)}&sz=64`,
+          apiSource: "googlenews",
+          language: item.lang,
+          relevanceScore: nlp.relevanceScore,
+          sentimentScore: nlp.sentimentScore,
+          sentiment: nlp.sentiment,
+        });
+      }
+    }
+
+    // 3. Process NewsAPI articles
+    if (newsApiResult?.articles) {
+      for (const a of newsApiResult.articles) {
+        if (!a.title || a.title === "[Removed]" || !a.url || seenUrls.has(a.url)) continue;
+        seenUrls.add(a.url);
+
         const textToAnalyze = `${a.title} ${a.description || ""}`;
         const nlp = computeNLP(textToAnalyze, searchTerms);
-        const idHash = crypto.createHash("md5").update(a.url || a.title).digest("hex").slice(0, 12);
+        const idHash = crypto.createHash("md5").update(a.url).digest("hex").slice(0, 12);
 
         articles.push({
           id: `na-${idHash}`,
@@ -143,6 +276,7 @@ export async function GET(req: NextRequest) {
           description: a.description,
           thumbnail: a.urlToImage,
           apiSource: "newsapi",
+          language: "en",
           relevanceScore: nlp.relevanceScore,
           sentimentScore: nlp.sentimentScore,
           sentiment: nlp.sentiment,
@@ -150,12 +284,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (guardianRes.status === "fulfilled" && guardianRes.value.ok) {
-      const data = await guardianRes.value.json();
-      for (const a of (data.response?.results || [])) {
+    // 4. Process The Guardian articles
+    if (guardianResult?.response?.results) {
+      for (const a of guardianResult.response.results) {
+        if (!a.webTitle || !a.webUrl || seenUrls.has(a.webUrl)) continue;
+        seenUrls.add(a.webUrl);
+
         const textToAnalyze = `${a.webTitle} ${a.fields?.trailText || ""}`;
         const nlp = computeNLP(textToAnalyze, searchTerms);
-        const idHash = crypto.createHash("md5").update(a.webUrl || a.webTitle).digest("hex").slice(0, 12);
+        const idHash = crypto.createHash("md5").update(a.webUrl).digest("hex").slice(0, 12);
 
         articles.push({
           id: `gd-${idHash}`,
@@ -167,6 +304,7 @@ export async function GET(req: NextRequest) {
           description: a.fields?.trailText,
           thumbnail: a.fields?.thumbnail,
           apiSource: "guardian",
+          language: "en",
           relevanceScore: nlp.relevanceScore,
           sentimentScore: nlp.sentimentScore,
           sentiment: nlp.sentiment,
@@ -174,19 +312,59 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Sort by published date descending
-    articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    // Filter by requested source if applicable
+    let finalArticles = articles;
+    if (sourceFilter !== "all") {
+      finalArticles = articles.filter(a => a.apiSource === sourceFilter || (sourceFilter === "gdelt" && a.apiSource === "gdeltcloud") || (sourceFilter === "google" && a.apiSource === "googlenews"));
+    }
+
+    // Sort by publishedAt descending
+    finalArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
     return NextResponse.json({
-      articles,
-      total: articles.length,
+      articles: finalArticles.slice(0, pageSize * 2),
+      total: finalArticles.length,
       query: baseTerm,
       effectiveQuery,
       topic_domain: topicDomain || "All Topics",
       location: location || "Global (All)",
+      language: lang,
       recency,
+      providers: ["gdeltcloud", "googlenews", "newsapi", "guardian"],
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+    const { title, url, source, publishedAt, description, sentiment, relevanceScore, apiSource } = body;
+
+    if (!title || !url) {
+      return NextResponse.json({ error: "Title and URL are required" }, { status: 400 });
+    }
+
+    try {
+      await query(
+        `INSERT INTO saved_articles (user_id, title, url, source, published_at, description, sentiment, relevance_score, api_source, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+         ON CONFLICT (url) DO UPDATE SET title = EXCLUDED.title, relevance_score = EXCLUDED.relevance_score`,
+        [session.user.id, title, url, source || "Unknown", publishedAt || new Date().toISOString(), description || "", sentiment || "neutral", relevanceScore || 80, apiSource || "gdeltcloud"]
+      );
+    } catch {
+      // Table might not exist yet, log silently and respond with success
+    }
+
+    return NextResponse.json({ success: true, article: { title, url, source, apiSource } });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

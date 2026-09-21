@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Newspaper, Globe, RefreshCw, Filter, ArrowRight, ExternalLink, Clock, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
+import { Newspaper, Globe, RefreshCw, Filter, ArrowRight, ExternalLink, Clock, TrendingUp, AlertCircle, Loader2, Languages, ShieldAlert, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Article {
@@ -13,13 +13,31 @@ interface Article {
   publishedAt: string;
   description?: string;
   thumbnail?: string;
-  apiSource: "newsapi" | "guardian";
+  apiSource: "gdeltcloud" | "googlenews" | "newsapi" | "guardian";
+  language?: string;
+  languageBreakdown?: { language: string; count: number }[];
+  topArticles?: { url: string; title: string; domain: string; domain_avatar_url?: string; rank?: number }[];
+  geo?: { country?: string; region?: string; continent?: string; location?: string };
+  actors?: { name: string; country?: string; role?: string }[];
+  metrics?: { significance?: number; severity_tier?: string; confidence?: number; article_count?: number };
   relevanceScore: number;
   sentimentScore: string;
   sentiment: "positive" | "negative" | "neutral";
 }
 
-const FILTER_TYPES = ["All", "NewsAPI", "Guardian", "High Relevance (90+)"];
+const FILTER_TYPES = ["All", "GDELT Cloud", "Google News", "NewsAPI", "Guardian", "High Relevance (90+)"];
+
+const LANGUAGES = [
+  { code: "all", name: "All Languages" },
+  { code: "en", name: "English (en)" },
+  { code: "ta", name: "Tamil (தமிழ்)" },
+  { code: "hi", name: "Hindi (हिन्दी)" },
+  { code: "es", name: "Spanish (es)" },
+  { code: "fr", name: "French (fr)" },
+  { code: "de", name: "German (de)" },
+  { code: "ar", name: "Arabic (ar)" },
+  { code: "zh", name: "Chinese (zh)" },
+];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -42,6 +60,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState("All");
+  const [selectedLang, setSelectedLang] = useState("all");
   const [searchQuery, setSearchQuery] = useState("enterprise technology AI PR media");
   const [total, setTotal] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -50,7 +69,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/news?q=${encodeURIComponent(searchQuery)}&pageSize=20`);
+      const res = await fetch(`/api/news?q=${encodeURIComponent(searchQuery)}&pageSize=25&lang=${selectedLang}`);
       if (!res.ok) throw new Error(`API error: ${res.statusText}`);
       const data = await res.json();
       setArticles(data.articles || []);
@@ -60,7 +79,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
     } finally {
       setLoading(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, selectedLang]);
 
   useEffect(() => {
     fetchNews();
@@ -89,6 +108,8 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
   };
 
   const filtered = articles.filter((a) => {
+    if (filterType === "GDELT Cloud") return a.apiSource === "gdeltcloud";
+    if (filterType === "Google News") return a.apiSource === "googlenews";
     if (filterType === "NewsAPI") return a.apiSource === "newsapi";
     if (filterType === "Guardian") return a.apiSource === "guardian";
     if (filterType === "High Relevance (90+)") return a.relevanceScore >= 90;
@@ -101,7 +122,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
         <div>
           <h1 className="text-3xl font-display tracking-tight">News Collection Pipeline</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time multi-source ingestion — NewsAPI + The Guardian API live data feed
+            Real-time multi-provider engine — GDELT Cloud API + Google News RSS + NewsAPI + The Guardian
           </p>
         </div>
 
@@ -129,10 +150,10 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
       {/* Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Live Articles", value: total.toString(), sub: "From NewsAPI + Guardian" },
-          { label: "Data Sources", value: "2 APIs", sub: "NewsAPI & The Guardian" },
+          { label: "Live Articles", value: total.toString(), sub: "From GDELT + Google News + APIs" },
+          { label: "Data Providers", value: "4 Sources", sub: "GDELT, Google, NewsAPI, Guardian" },
           { label: "High Relevance", value: articles.filter(a => a.relevanceScore >= 90).length.toString(), sub: "90+ Relevance Score" },
-          { label: "Positive Sentiment", value: articles.filter(a => a.sentiment === "positive").length.toString(), sub: "Favorable Coverage" },
+          { label: "Multi-Language", value: `${new Set(articles.map(a => a.language).filter(Boolean)).size} Languages`, sub: "Global Language Breakdown" },
         ].map((m, i) => (
           <div key={i} className="p-5 rounded-2xl border border-foreground/10 bg-background/80 backdrop-blur-xl">
             <div className="text-xs font-mono text-muted-foreground">{m.label}</div>
@@ -142,8 +163,8 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
         ))}
       </div>
 
-      {/* Search */}
-      <div className="flex gap-3">
+      {/* Search & Language Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <input
           type="text"
           value={searchQuery}
@@ -152,16 +173,29 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
           className="flex-1 px-4 py-2 text-xs font-mono rounded-full border border-foreground/10 bg-background/50 focus:bg-background focus:outline-none focus:border-foreground/30 transition-all"
           onKeyDown={(e) => e.key === "Enter" && fetchNews()}
         />
-        <Button onClick={fetchNews} className="rounded-full text-xs font-mono bg-foreground text-background hover:bg-foreground/90">
-          Search
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedLang}
+            onChange={(e) => setSelectedLang(e.target.value)}
+            className="px-3 py-2 text-xs font-mono rounded-full border border-foreground/10 bg-background text-foreground focus:outline-none"
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>{l.name}</option>
+            ))}
+          </select>
+
+          <Button onClick={fetchNews} className="rounded-full text-xs font-mono bg-foreground text-background hover:bg-foreground/90">
+            Search
+          </Button>
+        </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex items-center justify-between border-b border-foreground/10 pb-4 font-mono text-xs">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between border-b border-foreground/10 pb-4 font-mono text-xs flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Filter:</span>
+          <span className="text-muted-foreground">Provider:</span>
           {FILTER_TYPES.map((type) => (
             <button
               key={type}
@@ -217,13 +251,33 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {timeAgo(art.publishedAt)}
                   </span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] ${
-                    art.apiSource === "guardian"
+
+                  {/* Provider Badge */}
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    art.apiSource === "gdeltcloud"
+                      ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                      : art.apiSource === "googlenews"
+                      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                      : art.apiSource === "guardian"
                       ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                       : "bg-purple-500/10 text-purple-500 border border-purple-500/20"
                   }`}>
-                    {art.apiSource === "guardian" ? "The Guardian" : "NewsAPI"}
+                    {art.apiSource === "gdeltcloud" ? "GDELT Cloud" : art.apiSource === "googlenews" ? "Google News" : art.apiSource === "guardian" ? "The Guardian" : "NewsAPI"}
                   </span>
+
+                  {/* Language Badge */}
+                  {art.language && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-foreground/5 text-muted-foreground border border-foreground/10 uppercase">
+                      {art.language}
+                    </span>
+                  )}
+
+                  {/* Geo Tag if present */}
+                  {art.geo?.country && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-foreground/5 px-2 py-0.5 rounded">
+                      <MapPin className="w-2.5 h-2.5" /> {art.geo.country} {art.geo.location ? `(${art.geo.location})` : ""}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 font-mono text-xs">
@@ -244,7 +298,30 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
               </a>
 
               {art.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2">{art.description}</p>
+                <p className="text-sm text-muted-foreground line-clamp-3">{art.description}</p>
+              )}
+
+              {/* Combinable Top Articles for GDELT Cloud Events */}
+              {art.topArticles && art.topArticles.length > 0 && (
+                <div className="mt-3 p-3 rounded-xl bg-foreground/5 border border-foreground/10 space-y-2">
+                  <div className="text-[11px] font-mono font-bold text-foreground flex items-center gap-1.5">
+                    <Globe className="w-3 h-3 text-amber-500" /> Multi-Source News Coverage ({art.topArticles.length} sources)
+                  </div>
+                  <div className="space-y-1">
+                    {art.topArticles.slice(0, 3).map((ta, idx) => (
+                      <a
+                        key={idx}
+                        href={ta.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between text-xs text-muted-foreground hover:text-foreground hover:underline py-0.5"
+                      >
+                        <span className="truncate max-w-[80%]">• {ta.title}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground/70">{ta.domain}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
               )}
 
               <div className="flex items-center justify-between pt-2 border-t border-foreground/10 text-xs font-mono text-muted-foreground">
@@ -276,7 +353,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
           {filtered.length === 0 && !loading && !error && (
             <div className="text-center py-16 text-muted-foreground font-mono text-sm">
               <Globe className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              No articles found. Try a different search query.
+              No articles found. Try a different search query or select All Languages.
             </div>
           )}
         </div>
@@ -284,3 +361,4 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
     </div>
   );
 }
+
