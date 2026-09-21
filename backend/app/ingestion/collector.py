@@ -5,6 +5,7 @@ Strictly deterministic network requests and parsing. Zero mock data.
 from __future__ import annotations
 import asyncio
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 import feedparser
@@ -198,7 +199,15 @@ async def _fetch_single_rss(client: httpx.AsyncClient, source_name: str, feed_ur
 
             summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
             pub_date = parse_iso_date(getattr(entry, "published", None) or getattr(entry, "updated", None))
-            src = normalize_source_name(source_name, link)
+            extracted_src = source_name
+            if "Google News" in source_name or " - " in title:
+                if " - " in title:
+                    parts = title.rsplit(" - ", 1)
+                    if len(parts) == 2 and len(parts[1].strip()) < 50:
+                        title = parts[0].strip()
+                        extracted_src = parts[1].strip()
+
+            src = normalize_source_name(extracted_src, link)
 
             out.append(RawArticle(
                 id=hash_url(link, "rss-"),
@@ -334,7 +343,7 @@ async def collect_web_search_news(client: httpx.AsyncClient, query: str) -> list
                         id=f"web-{hash(parsed_url)}",
                         title=clean_title,
                         url=parsed_url,
-                        source=f"{source_name} (Web)",
+                        source=source_name,
                         published_at=datetime.now(timezone.utc).isoformat(),
                         description=clean_desc or f"Live news search match for {clean_q}.",
                         api_source="web_search",
@@ -376,7 +385,7 @@ async def collect_gnews_api(client: httpx.AsyncClient, query: str, recency: str)
                     id=hash_url(a["url"], "gnews-"),
                     title=clean_text(a["title"], 300),
                     url=a["url"],
-                    source=f"{src_name} (GNews)",
+                    source=src_name,
                     published_at=parse_iso_date(a.get("publishedAt")),
                     description=clean_text(a.get("description"), 1000),
                     api_source="gnews",
@@ -388,16 +397,70 @@ async def collect_gnews_api(client: httpx.AsyncClient, query: str, recency: str)
     return []
 
 
+async def collect_gdelt_cloud_api(client: httpx.AsyncClient, query: str) -> list[RawArticle]:
+    """Fetch real-time global events and news from GDELT Cloud API."""
+    token = getattr(settings, "gdelt_api_key", None) or os.getenv("GDELT_API_KEY", "gdelt_sk_1d5e02bceff21c9f89e1076e404059d3d1c3e60a9a15a725d60fe27e2137b4dd")
+    if not token:
+        return []
+    clean_q = query.strip() if query else ""
+    for noise in ["Within ", "India (National)", "India National", "Tamil Nadu (TN)", "(TN)", "(National)", "Global (All)"]:
+        clean_q = clean_q.replace(noise, "").strip()
+
+    url = "https://gdeltcloud.com/api/v2/events"
+    params: dict[str, Any] = {"limit": 15}
+    if clean_q:
+        params["search"] = clean_q
+
+    try:
+        r = await client.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=4.0,
+        )
+        if r.status_code == 200:
+            out: list[RawArticle] = []
+            events = r.json().get("data", [])
+            for item in events:
+                top = item.get("top_articles") or []
+                art_url = (top[0].get("url") if top else None) or item.get("primary_story_url") or item.get("url")
+                if not art_url:
+                    continue
+                domain = top[0].get("domain") if top else ""
+                src_name = domain.capitalize() if domain else "GDELT Intelligence"
+                src_name = normalize_source_name(src_name, art_url)
+
+                title_val = item.get("title") or (top[0].get("title") if top else "GDELT News Event")
+                desc_val = item.get("summary") or f"Global news tracked by GDELT: {title_val}"
+                pub_val = item.get("observed_at") or item.get("event_date")
+
+                out.append(RawArticle(
+                    id=hash_url(art_url, "gdelt-"),
+                    title=clean_text(title_val, 300),
+                    url=art_url,
+                    source=src_name,
+                    published_at=parse_iso_date(pub_val) if pub_val else datetime.now(timezone.utc).isoformat(),
+                    description=clean_text(desc_val, 1000),
+                    api_source="gdeltcloud",
+                    source_reliability=get_reliability(src_name),
+                ))
+            return out
+    except Exception as exc:
+        log.warning("GDELT Cloud API fetch notice (%s): %s", clean_q, exc)
+    return []
+
+
 async def collect_raw_articles(
     query: str = "",
     recency: str = "Last 24 Hours",
 ) -> tuple[list[RawArticle], dict[str, int]]:
     """
-    Collect real articles from all available sources, deduplicate,
-    and return both articles and a per-source breakdown count.
+    Collect real articles from all available sources (GDELT, NewsAPI, The Guardian, GNews, RSS, Web Search),
+    deduplicate, and return both articles and a per-source breakdown count.
     Returns: (deduplicated articles, {source_name: count})
     """
     async with httpx.AsyncClient(timeout=4.0) as client:
+        gdelt_task = collect_gdelt_cloud_api(client, query)
         na_task = collect_newsapi(client, query, recency)
         gd_task = collect_guardian(client, query, recency)
         gnews_api_task = collect_gnews_api(client, query, recency)
@@ -405,7 +468,7 @@ async def collect_raw_articles(
         gnews_task = collect_google_news_rss(client, query, recency)
         web_task = collect_web_search_news(client, query)
 
-        results = await asyncio.gather(na_task, gd_task, gnews_api_task, rss_task, gnews_task, web_task, return_exceptions=True)
+        results = await asyncio.gather(gdelt_task, na_task, gd_task, gnews_api_task, rss_task, gnews_task, web_task, return_exceptions=True)
 
     all_raw: list[RawArticle] = []
     for r in results:

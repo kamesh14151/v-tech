@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://optimus.ajstudioz.co.in"),
   title: "Optimus — AI-Powered Online Media Discovery & Intelligence",
   description:
-    "Autonomous online media discovery, contextual validation killing false alerts, and Anthropic/Perplexity-styled executive intelligence briefings.",
+    "Autonomous online media discovery, contextual validation killing false alerts, and Optimus Executive Media & Intelligence Briefings.",
   generator: "Optimus Intelligence",
   applicationName: "Optimus",
   icons: {
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     siteName: "Optimus Intelligence Platform",
     title: "Optimus — Autonomous Online Media Discovery & Intelligence",
     description:
-      "Autonomous online media discovery, contextual validation killing false alerts, and Anthropic/Perplexity-styled executive intelligence briefings.",
+      "Autonomous online media discovery, contextual validation killing false alerts, and Optimus Executive Media & Intelligence Briefings.",
     images: [
       {
         url: "/og-image.jpeg",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Optimus — Autonomous Online Media Discovery & Intelligence",
     description:
-      "Autonomous online media discovery, contextual validation killing false alerts, and Anthropic/Perplexity-styled executive intelligence briefings.",
+      "Autonomous online media discovery, contextual validation killing false alerts, and Optimus Executive Media & Intelligence Briefings.",
     images: ["/og-image.jpeg"],
   },
 };

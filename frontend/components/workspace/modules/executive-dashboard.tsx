@@ -878,11 +878,11 @@ export function ExecutiveDashboardView({
                 </div>
               </div>
 
-              {/* Perplexity-style Verified Citations Table */}
+              {/* Optimus Verified Citations Table */}
               <div className="space-y-3 pt-2">
                 <div className="text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
                   <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-zinc-900 text-white flex items-center justify-center text-[9px] sm:text-[10px] font-bold shrink-0">5</span>
-                  Perplexity-Indexed Verified Citations
+                  Optimus Verified Media Citations
                 </div>
                 <div className="rounded-2xl border border-zinc-200 overflow-hidden divide-y divide-zinc-200">
                   {report.topStories.map((story, idx) => (
