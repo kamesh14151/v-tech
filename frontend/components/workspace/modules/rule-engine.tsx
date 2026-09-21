@@ -40,7 +40,9 @@ export function RuleEngineView() {
   const [name, setName] = useState("");
   const [topicDomain, setTopicDomain] = useState("Fintech & Banking");
   const [geography, setGeography] = useState("Within Tamil Nadu (TN)");
-  const [schedule, setSchedule] = useState("Daily at 8:00 AM IST");
+  const [scheduleType, setScheduleType] = useState("Daily");
+  const [scheduleTime, setScheduleTime] = useState("08:00 AM IST");
+  const [customTimeInput, setCustomTimeInput] = useState("08:00");
   const [recency, setRecency] = useState("Last 24 Hours");
   const [mandatoryTerms, setMandatoryTerms] = useState("");
   const [excludedTerms, setExcludedTerms] = useState("");
@@ -94,7 +96,9 @@ export function RuleEngineView() {
     setName("");
     setTopicDomain("Fintech & Banking");
     setGeography("Within Tamil Nadu (TN)");
-    setSchedule("Daily at 8:00 AM IST");
+    setScheduleType("Daily");
+    setScheduleTime("08:00 AM IST");
+    setCustomTimeInput("08:00");
     setRecency("Last 24 Hours");
     setMandatoryTerms("");
     setExcludedTerms("");
@@ -107,11 +111,30 @@ export function RuleEngineView() {
     setName(rule.name);
     setTopicDomain(rule.topicDomain);
     setGeography(rule.geography);
-    setSchedule(rule.schedule);
     setRecency(rule.recency);
     setMandatoryTerms(rule.mandatoryTerms === "All Sector Signals" ? "" : rule.mandatoryTerms);
     setExcludedTerms(rule.excludedTerms === "None" ? "" : rule.excludedTerms);
     setTargetEmailState(rule.targetEmail || session?.user?.email || "kamesh14151@gmail.com");
+
+    const sched = rule.schedule || "";
+    if (sched.includes("Real-time")) {
+      setScheduleType("Real-time");
+    } else if (sched.includes("Twice Daily")) {
+      setScheduleType("Twice Daily");
+    } else if (sched.includes("Weekly")) {
+      setScheduleType("Weekly");
+    } else {
+      setScheduleType("Daily");
+      if (sched.includes("06:00 AM")) setScheduleTime("06:00 AM IST");
+      else if (sched.includes("07:00 AM")) setScheduleTime("07:00 AM IST");
+      else if (sched.includes("08:00 AM") || sched.includes("8:00 AM")) setScheduleTime("08:00 AM IST");
+      else if (sched.includes("09:00 AM")) setScheduleTime("09:00 AM IST");
+      else if (sched.includes("10:00 AM")) setScheduleTime("10:00 AM IST");
+      else if (sched.includes("12:00 PM")) setScheduleTime("12:00 PM IST");
+      else if (sched.includes("06:00 PM")) setScheduleTime("06:00 PM IST");
+      else if (sched.includes("08:00 PM")) setScheduleTime("08:00 PM IST");
+      else setScheduleTime("08:00 AM IST");
+    }
     setIsModalOpen(true);
   };
 
@@ -119,10 +142,24 @@ export function RuleEngineView() {
     e.preventDefault();
     if (!name.trim()) return;
 
+    let finalSchedule = "Daily at 8:00 AM IST";
+    if (scheduleType === "Real-time") {
+      finalSchedule = "Real-time on Critical Risk";
+    } else if (scheduleType === "Twice Daily") {
+      finalSchedule = "Twice Daily (Morning & Evening)";
+    } else if (scheduleType === "Weekly") {
+      finalSchedule = "Weekly on Monday Morning";
+    } else if (scheduleTime === "Custom" && customTimeInput) {
+      finalSchedule = `Daily at ${customTimeInput} IST`;
+    } else {
+      finalSchedule = `Daily at ${scheduleTime}`;
+    }
+
     const condition_json = {
       topic_domain: topicDomain,
       geography,
-      schedule,
+      schedule: finalSchedule,
+      delivery_time: scheduleTime === "Custom" ? customTimeInput : scheduleTime,
       recency,
       mandatoryTerms: mandatoryTerms || "All Topic Signals",
       excludedTerms: excludedTerms || "None",
@@ -143,7 +180,7 @@ export function RuleEngineView() {
           body: JSON.stringify({
             id: editingRule.id,
             name,
-            description: `Automated ${schedule} briefing for ${topicDomain} in ${geography}`,
+            description: `Automated ${finalSchedule} briefing for ${topicDomain} in ${geography}`,
             condition_json,
             action_json,
           }),
@@ -156,7 +193,7 @@ export function RuleEngineView() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name,
-            description: `Automated ${schedule} briefing for ${topicDomain} in ${geography}`,
+            description: `Automated ${finalSchedule} briefing for ${topicDomain} in ${geography}`,
             condition_json,
             action_json,
           }),
@@ -464,24 +501,71 @@ export function RuleEngineView() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-muted-foreground mb-1">Schedule</label>
-                  <select value={schedule} onChange={e => setSchedule(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-foreground/15 bg-background focus:outline-none">
-                    <option>Daily at 8:00 AM IST</option>
-                    <option>Twice Daily (Morning & Evening)</option>
-                    <option>Real-time on Critical Risk</option>
-                    <option>Weekly on Monday Morning</option>
-                  </select>
+              {/* Configurable Schedule & Automated Timing Control */}
+              <div className="space-y-2.5 p-3 rounded-xl border border-foreground/12 bg-foreground/3">
+                <div className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-500" />
+                  Automated Schedule & Email Dispatch Timing
                 </div>
-                <div>
-                  <label className="block text-muted-foreground mb-1">Recency Window</label>
-                  <select value={recency} onChange={e => setRecency(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-foreground/15 bg-background focus:outline-none">
-                    <option>Last 24 Hours</option>
-                    <option>Last 7 Days</option>
-                    <option>Within 1 Month</option>
-                  </select>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-muted-foreground text-[10px] mb-1">Frequency</label>
+                    <select
+                      value={scheduleType}
+                      onChange={e => setScheduleType(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-foreground/15 bg-background focus:outline-none text-xs"
+                    >
+                      <option value="Daily">Daily Automated Digest</option>
+                      <option value="Twice Daily">Twice Daily (Morning & Evening)</option>
+                      <option value="Real-time">Real-time on Critical Risk</option>
+                      <option value="Weekly">Weekly Digest (Monday)</option>
+                    </select>
+                  </div>
+
+                  {scheduleType === "Daily" ? (
+                    <div>
+                      <label className="block text-muted-foreground text-[10px] mb-1">Delivery Time (IST)</label>
+                      <select
+                        value={scheduleTime}
+                        onChange={e => setScheduleTime(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-foreground/15 bg-background focus:outline-none text-xs font-mono"
+                      >
+                        <option value="06:00 AM IST">06:00 AM IST (Early Morning)</option>
+                        <option value="07:00 AM IST">07:00 AM IST (Morning Briefing)</option>
+                        <option value="08:00 AM IST">08:00 AM IST (Standard)</option>
+                        <option value="09:00 AM IST">09:00 AM IST (Workday Start)</option>
+                        <option value="10:00 AM IST">10:00 AM IST (Late Morning)</option>
+                        <option value="12:00 PM IST">12:00 PM IST (Midday Digest)</option>
+                        <option value="05:00 PM IST">05:00 PM IST (Evening Briefing)</option>
+                        <option value="06:00 PM IST">06:00 PM IST (Evening Summary)</option>
+                        <option value="08:00 PM IST">08:00 PM IST (Nightly Recap)</option>
+                        <option value="Custom">Custom Time...</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-muted-foreground text-[10px] mb-1">Recency Window</label>
+                      <select value={recency} onChange={e => setRecency(e.target.value)} className="w-full px-2.5 py-1.5 rounded-lg border border-foreground/15 bg-background focus:outline-none text-xs">
+                        <option>Last 24 Hours</option>
+                        <option>Last 7 Days</option>
+                        <option>Within 1 Month</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
+
+                {scheduleType === "Daily" && scheduleTime === "Custom" && (
+                  <div className="pt-1">
+                    <label className="block text-muted-foreground text-[10px] mb-1">Custom Time (HH:MM IST)</label>
+                    <input
+                      type="time"
+                      value={customTimeInput}
+                      onChange={e => setCustomTimeInput(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-lg border border-foreground/15 bg-background focus:outline-none text-xs font-mono"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
