@@ -166,8 +166,8 @@ export function RuleEngineView() {
     };
 
     const action_json = {
-      action: `Email Daily Briefing + Word Doc (.docx) to ${targetEmailState}`,
-      email: targetEmailState,
+      action: `Email Daily Briefing + Word Doc (.docx) to ${userEmail}`,
+      email: userEmail,
       format,
     };
 
@@ -185,7 +185,7 @@ export function RuleEngineView() {
             action_json,
           }),
         });
-        if (res.ok) fetchRules();
+        if (res.ok) await fetchRules();
       } else {
         // Create new rule via POST /api/rules
         const res = await fetch("/api/rules", {
@@ -198,7 +198,7 @@ export function RuleEngineView() {
             action_json,
           }),
         });
-        if (res.ok) fetchRules();
+        if (res.ok) await fetchRules();
       }
     } catch (e) {
       console.error(e);
@@ -224,13 +224,13 @@ export function RuleEngineView() {
         setTriggeredSuccess(
           `Morning Intelligence Briefing with clickable story links dispatched directly to ${data.targetEmail || rule.targetEmail}!`
         );
-        fetchRules();
+        await fetchRules();
         setTimeout(() => setTriggeredSuccess(null), 6000);
       } else if (res.ok) {
         setTriggeredSuccess(
           `Rule executed & dispatched to ${rule.targetEmail}!`
         );
-        fetchRules();
+        await fetchRules();
         setTimeout(() => setTriggeredSuccess(null), 5000);
       }
     } catch (e) {
@@ -256,7 +256,7 @@ export function RuleEngineView() {
         body: JSON.stringify({ id, is_active: newIsActive }),
       });
       if (res.ok) {
-        fetchRules();
+        await fetchRules();
       }
     } catch (e) {
       console.error(e);
@@ -269,7 +269,7 @@ export function RuleEngineView() {
     try {
       const res = await fetch(`/api/rules?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        fetchRules();
+        await fetchRules();
       }
     } catch (e) {
       console.error(e);
@@ -579,16 +579,15 @@ export function RuleEngineView() {
                 />
               </div>
 
-              <div>
-                <label className="block text-muted-foreground mb-1">Target Recipient Email Address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. kamesh14151@gmail.com"
-                  value={targetEmailState}
-                  onChange={e => setTargetEmailState(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-foreground/15 bg-background focus:outline-none focus:border-foreground/40"
-                />
+              {/* Google Auth Synced Email Address */}
+              <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs text-muted-foreground flex items-center justify-between">
+                <span className="flex items-center gap-2 font-medium">
+                  <Mail className="w-4 h-4 text-emerald-500 shrink-0" />
+                  Target Email: <strong className="text-foreground">{userEmail}</strong>
+                </span>
+                <span className="text-[10px] font-mono bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold">
+                  Google Auth
+                </span>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-foreground/10">

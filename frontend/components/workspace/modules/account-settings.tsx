@@ -452,23 +452,11 @@ export function AccountSettingsView({
                 <label className="block text-xs font-mono font-medium text-foreground mb-1.5">
                   Target Recipient Email Address:
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    required
-                    value={targetEmail}
-                    onChange={e => setTargetEmail(e.target.value)}
-                    placeholder="kamesh6592@gmail.com"
-                    className="flex-1 px-4 py-2.5 text-xs font-mono rounded-xl border border-foreground/15 bg-background focus:outline-none focus:border-foreground"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => signIn("google", { callbackUrl: "/workspace" })}
-                    className="px-3 py-2.5 rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-mono font-semibold hover:bg-red-500/20 transition-colors shrink-0"
-                    title="Authenticate with Gmail"
-                  >
-                    Google Sync
-                  </button>
+                <div className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs font-mono">
+                  <span className="text-foreground font-bold">{targetEmail}</span>
+                  <span className="text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">
+                    Google Auth Synced
+                  </span>
                 </div>
               </div>
 

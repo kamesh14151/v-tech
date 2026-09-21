@@ -9,6 +9,7 @@ async function ensureRulesTable() {
       CREATE TABLE IF NOT EXISTS rules (
         id SERIAL PRIMARY KEY,
         user_id INTEGER,
+        user_email VARCHAR(255),
         name VARCHAR(255) NOT NULL,
         description TEXT,
         condition_json JSONB DEFAULT '{}'::jsonb,
@@ -20,6 +21,7 @@ async function ensureRulesTable() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
+    await query(`ALTER TABLE rules ADD COLUMN IF NOT EXISTS user_email VARCHAR(255);`).catch(() => {});
   } catch (e) {
     console.error("ensureRulesTable notice:", e);
   }
@@ -37,67 +39,72 @@ export async function GET(req: NextRequest) {
   try {
     await ensureRulesTable();
 
-    if (userId) {
-      const rules = await query(
-        "SELECT * FROM rules WHERE user_id = $1 ORDER BY created_at DESC",
-        [userId]
-      );
+    // 1. Fetch rules matching this user email or user_id
+    let rules = await query(
+      "SELECT * FROM rules WHERE LOWER(user_email) = LOWER($1) OR (user_id IS NOT NULL AND user_id = $2) ORDER BY id ASC",
+      [userEmail, userId || -1]
+    );
 
-      // If user has no rules yet, create initial real automated email delivery rules tailored to their email
-      if (rules.length === 0) {
-        const seedRule1 = await query(
-          `INSERT INTO rules (user_id, name, description, condition_json, action_json, is_active, triggered_count, last_triggered)
-           VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, true, 1, NOW() - INTERVAL '15 minutes') RETURNING *`,
-          [
-            userId,
-            "Daily 8:00 AM Morning Intelligence Briefing",
-            `Automated daily briefing sent to ${userEmail}`,
-            JSON.stringify({
-              topic_domain: "Fintech & Banking",
-              geography: "Within Tamil Nadu (TN) + Pan-India",
-              recency: "Last 24 Hours",
-              schedule: "Every morning at 8:00 AM IST",
-              mandatoryTerms: "RBI, UPI, compliance, growth, regulation",
-              excludedTerms: "river bank, blood bank",
-            }),
-            JSON.stringify({
-              action: `Email Full Briefing + Word Doc (.docx) to ${userEmail}`,
-              email: userEmail,
-              format: "HTML Executive Briefing + Word (.docx) Attachment",
-            }),
-          ]
-        );
-
-        const seedRule2 = await query(
-          `INSERT INTO rules (user_id, name, description, condition_json, action_json, is_active, triggered_count, last_triggered)
-           VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, true, 3, NOW() - INTERVAL '2 hours') RETURNING *`,
-          [
-            userId,
-            "Real-time Breaking Adverse Risk Alert",
-            `Instant risk alerts sent to ${userEmail}`,
-            JSON.stringify({
-              topic_domain: "IT Companies & Enterprise Tech",
-              geography: "Global & Regional Tier-1",
-              recency: "Real-time (< 1 hour)",
-              schedule: "Instant on High/Critical Risk Detection",
-              mandatoryTerms: "outage, breach, lawsuit, security, fine",
-              excludedTerms: "parody, satire, rumor blogs",
-            }),
-            JSON.stringify({
-              action: `Instant Critical Alert Email to ${userEmail}`,
-              email: userEmail,
-              format: "Urgent Alert Memo + Actionable PR Checklist",
-            }),
-          ]
-        );
-
-        return NextResponse.json({ rules: [seedRule1[0], seedRule2[0]], userEmail });
-      }
-
-      return NextResponse.json({ rules, userEmail });
+    // 2. Fallback: if no rules for this specific email yet, query all existing rules
+    if (!rules || rules.length === 0) {
+      rules = await query("SELECT * FROM rules ORDER BY id ASC");
     }
 
-    return NextResponse.json({ rules: [], userEmail });
+    // 3. If database table is completely empty, seed initial real rules for this user
+    if (!rules || rules.length === 0) {
+      const seedRule1 = await query(
+        `INSERT INTO rules (user_id, user_email, name, description, condition_json, action_json, is_active, triggered_count, last_triggered)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, true, 1, NOW() - INTERVAL '15 minutes') RETURNING *`,
+        [
+          userId,
+          userEmail,
+          "Daily 8:00 AM Morning Intelligence Briefing",
+          `Automated daily briefing sent to ${userEmail}`,
+          JSON.stringify({
+            topic_domain: "Fintech & Banking",
+            geography: "Within Tamil Nadu (TN) + Pan-India",
+            recency: "Last 24 Hours",
+            schedule: "Daily at 08:00 AM IST",
+            delivery_time: "08:00 AM IST",
+            mandatoryTerms: "RBI, UPI, compliance, growth, regulation",
+            excludedTerms: "river bank, blood bank",
+          }),
+          JSON.stringify({
+            action: `Email Full Briefing + Word Doc (.docx) to ${userEmail}`,
+            email: userEmail,
+            format: "HTML Executive Briefing + Word (.docx) Attachment",
+          }),
+        ]
+      );
+
+      const seedRule2 = await query(
+        `INSERT INTO rules (user_id, user_email, name, description, condition_json, action_json, is_active, triggered_count, last_triggered)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, true, 3, NOW() - INTERVAL '2 hours') RETURNING *`,
+        [
+          userId,
+          userEmail,
+          "Real-time Breaking Adverse Risk Alert",
+          `Instant risk alerts sent to ${userEmail}`,
+          JSON.stringify({
+            topic_domain: "IT Companies & Enterprise Tech",
+            geography: "Global & Regional Tier-1",
+            recency: "Real-time (< 1 hour)",
+            schedule: "Real-time on Critical Risk",
+            mandatoryTerms: "outage, breach, lawsuit, security, fine",
+            excludedTerms: "parody, satire, rumor blogs",
+          }),
+          JSON.stringify({
+            action: `Instant Critical Alert Email to ${userEmail}`,
+            email: userEmail,
+            format: "Urgent Alert Memo + Actionable PR Checklist",
+          }),
+        ]
+      );
+
+      return NextResponse.json({ rules: [seedRule1[0], seedRule2[0]], userEmail });
+    }
+
+    return NextResponse.json({ rules, userEmail });
   } catch (error: any) {
     console.error("GET rules error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -111,7 +118,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
-  const userEmail = session.user.email || "user@optimus-intelligence.com";
+  const userEmail = session.user.email || "kamesh14151@gmail.com";
 
   const body = await req.json();
   const { name, description, condition_json, action_json } = body;
@@ -119,22 +126,25 @@ export async function POST(req: NextRequest) {
   try {
     await ensureRulesTable();
 
-    if (userId) {
-      const rows = await query(
-        `INSERT INTO rules (user_id, name, description, condition_json, action_json, is_active, triggered_count, last_triggered)
-         VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, true, 0, NOW()) RETURNING *`,
-        [
-          userId,
-          name || "Automated Intelligence Delivery Rule",
-          description || `Automated report delivery to ${userEmail}`,
-          JSON.stringify(condition_json || {}),
-          JSON.stringify(action_json || { email: userEmail, action: `Send Daily Briefing to ${userEmail}` }),
-        ]
-      );
-      return NextResponse.json({ rule: rows[0], success: true });
-    }
+    const cleanActionJson = {
+      ...(action_json || {}),
+      email: userEmail,
+      action: action_json?.action || `Send Briefing to ${userEmail}`,
+    };
 
-    return NextResponse.json({ success: true });
+    const rows = await query(
+      `INSERT INTO rules (user_id, user_email, name, description, condition_json, action_json, is_active, triggered_count, last_triggered)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, true, 0, NOW()) RETURNING *`,
+      [
+        userId,
+        userEmail,
+        name || "Automated Intelligence Delivery Rule",
+        description || `Automated report delivery to ${userEmail}`,
+        JSON.stringify(condition_json || {}),
+        JSON.stringify(cleanActionJson),
+      ]
+    );
+    return NextResponse.json({ rule: rows[0], success: true });
   } catch (error: any) {
     console.error("POST rule error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -148,6 +158,7 @@ export async function PUT(req: NextRequest) {
   }
 
   const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
+  const userEmail = session.user.email || "kamesh14151@gmail.com";
   const body = await req.json();
   const { id, name, description, condition_json, action_json, is_active } = body;
 
@@ -155,49 +166,28 @@ export async function PUT(req: NextRequest) {
     await ensureRulesTable();
 
     if (id && !isNaN(Number(id))) {
-      let rows: any[] = [];
-      if (userId) {
-        rows = await query(
-          `UPDATE rules SET
-             name = COALESCE($1, name),
-             description = COALESCE($2, description),
-             condition_json = COALESCE($3::jsonb, condition_json),
-             action_json = COALESCE($4::jsonb, action_json),
-             is_active = COALESCE($5, is_active),
-             updated_at = NOW()
-           WHERE id = $6 AND user_id = $7 RETURNING *`,
-          [
-            name || null,
-            description || null,
-            condition_json ? JSON.stringify(condition_json) : null,
-            action_json ? JSON.stringify(action_json) : null,
-            typeof is_active === "boolean" ? is_active : null,
-            Number(id),
-            userId,
-          ]
-        );
-      }
+      const cleanActionJson = action_json ? { ...action_json, email: userEmail } : null;
 
-      if (!rows || rows.length === 0) {
-        rows = await query(
-          `UPDATE rules SET
-             name = COALESCE($1, name),
-             description = COALESCE($2, description),
-             condition_json = COALESCE($3::jsonb, condition_json),
-             action_json = COALESCE($4::jsonb, action_json),
-             is_active = COALESCE($5, is_active),
-             updated_at = NOW()
-           WHERE id = $6 RETURNING *`,
-          [
-            name || null,
-            description || null,
-            condition_json ? JSON.stringify(condition_json) : null,
-            action_json ? JSON.stringify(action_json) : null,
-            typeof is_active === "boolean" ? is_active : null,
-            Number(id),
-          ]
-        );
-      }
+      const rows = await query(
+        `UPDATE rules SET
+           name = COALESCE($1, name),
+           description = COALESCE($2, description),
+           condition_json = COALESCE($3::jsonb, condition_json),
+           action_json = COALESCE($4::jsonb, action_json),
+           is_active = COALESCE($5, is_active),
+           user_email = COALESCE($6, user_email),
+           updated_at = NOW()
+         WHERE id = $7 RETURNING *`,
+        [
+          name || null,
+          description || null,
+          condition_json ? JSON.stringify(condition_json) : null,
+          cleanActionJson ? JSON.stringify(cleanActionJson) : null,
+          typeof is_active === "boolean" ? is_active : null,
+          userEmail,
+          Number(id),
+        ]
+      );
 
       return NextResponse.json({ rule: rows[0], success: true });
     }
@@ -216,6 +206,8 @@ export async function PATCH(req: NextRequest) {
   }
 
   const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
+  const userEmail = session.user.email || "kamesh14151@gmail.com";
+
   const body = await req.json();
   const { id, is_active, trigger_now } = body;
 
@@ -226,19 +218,21 @@ export async function PATCH(req: NextRequest) {
   try {
     await ensureRulesTable();
 
+    // 1. Toggle Active / Paused status
+    if (typeof is_active === "boolean" && id && !isNaN(Number(id))) {
+      const rows = await query(
+        "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
+        [is_active, Number(id)]
+      );
+      return NextResponse.json({ rule: rows && rows[0] ? rows[0] : null, success: true, is_active });
+    }
+
+    // 2. Trigger Now Action Execution
     if (trigger_now) {
-      // 1. Fetch rule by ID (or fallback)
       let rows: any[] = [];
-      if (userId && id && !isNaN(Number(id))) {
+      if (id && !isNaN(Number(id))) {
         rows = await query(
-          `UPDATE rules SET triggered_count = triggered_count + 1, last_triggered = NOW(), updated_at = NOW()
-           WHERE id = $1 AND user_id = $2 RETURNING *`,
-          [Number(id), userId]
-        );
-      }
-      if ((!rows || rows.length === 0) && id && !isNaN(Number(id))) {
-        rows = await query(
-          `UPDATE rules SET triggered_count = triggered_count + 1, last_triggered = NOW(), updated_at = NOW()
+          `UPDATE rules SET triggered_count = COALESCE(triggered_count, 0) + 1, last_triggered = NOW(), updated_at = NOW()
            WHERE id = $1 RETURNING *`,
           [Number(id)]
         );
@@ -250,14 +244,11 @@ export async function PATCH(req: NextRequest) {
           id: id || 1,
           name: "Automated Morning Briefing",
           condition_json: { topic_domain: "IT Companies & Tech", geography: "India (National)", recency: "Last 24 Hours" },
-          action_json: { email: session.user.email || "recipient@optimus.co.in" },
+          action_json: { email: userEmail },
         };
       }
 
-      const rawEmail = rule.action_json?.email;
-      const targetEmail = (rawEmail && !rawEmail.includes("optimus-intelligence.com") && !rawEmail.includes("optimus.co.in"))
-        ? rawEmail
-        : (session.user.email || "kamesh14151@gmail.com");
+      const targetEmail = userEmail;
       const topicDomain = rule.condition_json?.topic_domain || "IT Companies & Tech";
       const location = rule.condition_json?.geography || "India (National)";
       const recency = rule.condition_json?.recency || "Last 24 Hours";
@@ -337,6 +328,8 @@ export async function PATCH(req: NextRequest) {
           sender: emailResult.sender,
           emailId: emailResult.id,
           targetEmail,
+          triggered_count: rule.triggered_count,
+          last_triggered: rule.last_triggered,
         });
       }
 
@@ -353,23 +346,6 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    if (typeof is_active === "boolean" && id && !isNaN(Number(id))) {
-      let rows: any[] = [];
-      if (userId) {
-        rows = await query(
-          "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING *",
-          [is_active, Number(id), userId]
-        );
-      }
-      if (!rows || rows.length === 0) {
-        rows = await query(
-          "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
-          [is_active, Number(id)]
-        );
-      }
-      return NextResponse.json({ rule: rows[0], success: true });
-    }
-
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -382,16 +358,12 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
   try {
     await ensureRulesTable();
     if (id && !isNaN(Number(id))) {
-      if (userId) {
-        await query("DELETE FROM rules WHERE id = $1 AND user_id = $2", [Number(id), userId]);
-      }
       await query("DELETE FROM rules WHERE id = $1", [Number(id)]);
     }
     return NextResponse.json({ success: true, deletedId: id });

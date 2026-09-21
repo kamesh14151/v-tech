@@ -20,7 +20,8 @@ export function LoginWorkspaceView({
 }: {
   currentWorkspace: string;
   setCurrentWorkspace: (ws: string) => void;
-  currentRole: (role: string) => void;
+  currentRole?: string;
+  setCurrentRole?: (role: string) => void;
   onNavigate: (mod: any) => void;
 }) {
   const [selectedWs, setSelectedWs] = useState("ws-1");
@@ -28,7 +29,7 @@ export function LoginWorkspaceView({
   const handleSelectWorkspace = (ws: typeof workspaces[0]) => {
     setSelectedWs(ws.id);
     setCurrentWorkspace(ws.name);
-    setCurrentRole(ws.role);
+    if (setCurrentRole) setCurrentRole(ws.role);
   };
 
   return (
