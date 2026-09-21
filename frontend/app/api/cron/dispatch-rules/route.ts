@@ -3,7 +3,7 @@ import { query } from "@/lib/db";
 import { sendMorningDigestEmail } from "@/lib/email";
 
 // Helper function to check if a scheduled rule is due right now
-function isRuleDueNow(conditionJson: any, lastTriggered: string | null): boolean {
+function isRuleDueNow(conditionJson: any, lastTriggered: string | null, updatedAt?: string | null): boolean {
   if (!conditionJson) return false;
 
   const schedule = (conditionJson.schedule || "").toLowerCase();
@@ -17,13 +17,18 @@ function isRuleDueNow(conditionJson: any, lastTriggered: string | null): boolean
   const currentHour = istDate.getHours(); // 0-23
   const todayISTStr = istDate.toISOString().split("T")[0]; // "YYYY-MM-DD"
 
+  // Check if rule was edited AFTER last trigger (user updated schedule)
+  const isNewlyUpdated = Boolean(
+    updatedAt && lastTriggered && new Date(updatedAt).getTime() > (new Date(lastTriggered).getTime() + 10000)
+  );
+
   // Check if triggered in the last 15 minutes or already triggered today
-  if (lastTriggered) {
+  if (lastTriggered && !isNewlyUpdated) {
     const lastDate = new Date(lastTriggered);
     const lastISTDate = new Date(lastDate.getTime() + (lastDate.getTimezoneOffset() * 60000) + istOffsetMs);
     const lastISTStr = lastISTDate.toISOString().split("T")[0];
 
-    // For Daily / Scheduled rules: if already triggered today, don't resend today
+    // For Daily / Scheduled rules: if already triggered today and not edited since, don't resend today
     if (lastISTStr === todayISTStr && !schedule.includes("real-time") && !schedule.includes("instant")) {
       return false;
     }
@@ -35,7 +40,7 @@ function isRuleDueNow(conditionJson: any, lastTriggered: string | null): boolean
       return true;
     }
   } else {
-    // Never triggered before -> due immediately!
+    // Never triggered before or newly updated schedule -> evaluate target time
     if (schedule.includes("real-time") || schedule.includes("instant")) return true;
   }
 
@@ -86,8 +91,9 @@ async function handleDispatch(req: NextRequest) {
     for (const rule of rules) {
       const conditionJson = rule.condition_json || {};
       const lastTriggered = rule.last_triggered;
+      const updatedAt = rule.updated_at;
 
-      if (isRuleDueNow(conditionJson, lastTriggered)) {
+      if (isRuleDueNow(conditionJson, lastTriggered, updatedAt)) {
         const targetEmail = rule.user_email || rule.action_json?.email || "kamesh14151@gmail.com";
         const topicDomain = conditionJson.topic_domain || "IT Companies & Tech";
         const location = conditionJson.geography || "India (National)";
