@@ -368,17 +368,6 @@ export function WorkspaceLayout({
               <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 opacity-60" />
             </button>
 
-            {/* 2. Industry Domain Modal Trigger */}
-            <button
-              onClick={() => setIsIndustryModalOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-foreground/15 bg-foreground/5 text-[11px] font-mono text-foreground hover:bg-foreground/10 transition-all max-w-40 truncate shadow-xs"
-              title="Select Industry Domain"
-            >
-              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
-              <span className="font-semibold truncate">{topicDomain}</span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 opacity-60" />
-            </button>
-
             {/* 3. Location Scope Dropdown Pill */}
             <div className="relative hidden md:block">
               <button
