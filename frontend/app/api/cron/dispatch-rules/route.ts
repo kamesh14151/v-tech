@@ -15,26 +15,33 @@ function isRuleDueNow(conditionJson: any, lastTriggered: string | null): boolean
   const istDate = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffsetMs);
   
   const currentHour = istDate.getHours(); // 0-23
-  const currentMinute = istDate.getMinutes(); // 0-59
+  const todayISTStr = istDate.toISOString().split("T")[0]; // "YYYY-MM-DD"
 
-  // Check if triggered in the last 15 minutes to prevent duplicate sends
+  // Check if triggered in the last 15 minutes or already triggered today
   if (lastTriggered) {
     const lastDate = new Date(lastTriggered);
-    const diffMinutes = (now.getTime() - lastDate.getTime()) / (1000 * 60);
-    if (diffMinutes < 15) return false;
-  }
+    const lastISTDate = new Date(lastDate.getTime() + (lastDate.getTimezoneOffset() * 60000) + istOffsetMs);
+    const lastISTStr = lastISTDate.toISOString().split("T")[0];
 
-  // Real-time rules: due if not triggered in the last hour
-  if (schedule.includes("real-time") || schedule.includes("instant")) {
-    if (!lastTriggered) return true;
-    const diffHours = (now.getTime() - new Date(lastTriggered).getTime()) / (1000 * 60 * 60);
-    return diffHours >= 1;
+    // For Daily / Scheduled rules: if already triggered today, don't resend today
+    if (lastISTStr === todayISTStr && !schedule.includes("real-time") && !schedule.includes("instant")) {
+      return false;
+    }
+
+    // For Real-time / Instant rules: prevent duplicate sends within 15 minutes
+    if (schedule.includes("real-time") || schedule.includes("instant")) {
+      const diffMinutes = (now.getTime() - lastDate.getTime()) / (1000 * 60);
+      if (diffMinutes < 15) return false;
+      return true;
+    }
+  } else {
+    // Never triggered before -> due immediately!
+    if (schedule.includes("real-time") || schedule.includes("instant")) return true;
   }
 
   // Parse targeted hour from schedule string or deliveryTime
-  let targetHour = -1;
+  let targetHour = 8; // Default to 8 AM IST
 
-  // Pattern matching for AM/PM format (e.g., "03:00 pm", "3:00 pm", "8:00 am")
   const ampmMatch = (schedule + " " + deliveryTime).match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
   if (ampmMatch) {
     let rawHour = parseInt(ampmMatch[1], 10);
@@ -43,21 +50,15 @@ function isRuleDueNow(conditionJson: any, lastTriggered: string | null): boolean
     if (meridiem === "am" && rawHour === 12) rawHour = 0;
     targetHour = rawHour;
   } else {
-    // 24h / numeric hour match (e.g., "15:00", "3.00", "15")
-    const numMatch = (schedule + " " + deliveryTime).match(/(\d{1,2})[\.:]?(\d{2})?/);
+    const numMatch = (schedule + " " + deliveryTime).match(/(\d{1,2})[\.:](\d{2})/);
     if (numMatch) {
       let h = parseInt(numMatch[1], 10);
-      if (h >= 1 && h <= 12 && (schedule.includes("pm") || deliveryTime.includes("pm") || currentHour >= 12)) {
-        if (h < 12) h += 12;
-      }
       targetHour = h;
     }
   }
 
-  if (targetHour === -1) targetHour = 8; // Default to 8 AM
-
-  // Rule is due if current hour matches target hour
-  return currentHour === targetHour;
+  // Rule is due if current IST hour has reached or passed targetHour
+  return currentHour >= targetHour;
 }
 
 export async function GET(req: NextRequest) {
