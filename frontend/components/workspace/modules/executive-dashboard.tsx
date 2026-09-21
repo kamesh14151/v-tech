@@ -519,15 +519,8 @@ export function ExecutiveDashboardView({
 
       const resData = await res.json().catch(() => ({}));
       if (res.ok && resData.success) {
-        // Track real delivery address (may differ due to Resend free-tier restriction)
-        const deliveredTo = resData.targetEmail || effectiveEmail;
-        setEmailDeliveredTo(deliveredTo);
         setEmailSent(true);
-        setTimeout(() => { setEmailSent(false); setEmailDeliveredTo(""); }, 6000);
-        // Inform user if email was rerouted
-        if (resData.note) {
-          setTimeout(() => alert(`ℹ️ ${resData.note}`), 600);
-        }
+        setTimeout(() => setEmailSent(false), 5000);
       } else {
         console.error("Email send error:", resData);
         alert(`Email delivery failed: ${resData.error || "Unknown error. Check RESEND_API_KEY."}`);
@@ -729,7 +722,7 @@ export function ExecutiveDashboardView({
         <div className="p-3.5 sm:p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 text-xs font-mono">
             <Check className="w-4 h-4 shrink-0" />
-            <span><strong>Dispatched!</strong> Intelligence Briefing sent to <strong>{emailDeliveredTo || effectiveEmail}</strong>.</span>
+            <span><strong>Dispatched!</strong> Intelligence Briefing sent to <strong>{effectiveEmail}</strong>.</span>
           </div>
           <span className="text-[10px] font-mono uppercase font-bold bg-emerald-500/20 px-2 py-0.5 rounded shrink-0">Sent</span>
         </div>
@@ -915,7 +908,7 @@ export function ExecutiveDashboardView({
               <div className="text-[10px] sm:text-xs">
                 {(() => {
                   if (!report) return new Date().toLocaleDateString("en-US", { dateStyle: "full" });
-                  const rawDate = report.generatedAt || report.created_at || report.generated_at;
+                  const rawDate = report.generatedAt || (report as any).created_at || (report as any).generated_at;
                   const d = rawDate ? new Date(rawDate) : new Date();
                   return isNaN(d.getTime())
                     ? new Date().toLocaleDateString("en-US", { dateStyle: "full" })
@@ -1048,13 +1041,13 @@ export function ExecutiveDashboardView({
               : storiesToUse.slice(0, 4).map(s => ({
                   name: s.title,
                   count: 1,
-                  description: `Live media report from ${s.source} with ${s.priority || "HIGH"} priority relevance.`,
-                  priority: s.priority || "HIGH",
+                  description: `Live media report from ${s.source} with ${(s as any).priority || "HIGH"} priority relevance.`,
+                  priority: (s as any).priority || "HIGH",
                 }));
             const risksToUse = (report.risks && report.risks.length > 0)
               ? report.risks
               : storiesToUse.slice(0, 3).map(s => ({
-                  severity: s.priority === "CRITICAL" ? "critical" : s.priority === "HIGH" ? "high" : "medium",
+                  severity: (s as any).priority === "CRITICAL" ? "critical" : (s as any).priority === "HIGH" ? "high" : "medium",
                   title: s.title,
                   source: s.source,
                   reason: `Media coverage tracked from ${s.source} with ${s.relevanceScore || 90}% topic relevance.`,

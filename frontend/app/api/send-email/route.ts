@@ -248,58 +248,34 @@ a[x-apple-data-detectors], #MessageViewBody a { color:inherit!important; text-de
 </html>`;
 
 
-  // Primary sender: noreply@ajstudioz.co.in (verified domain — works for any recipient)
-  // Attempts 2 & 3 are silent safety nets for transient failures only.
-  const RESEND_VERIFIED_OWNER = process.env.RESEND_VERIFIED_EMAIL || "kamesh6592@gmail.com";
-
-  const attemptSend = async (from: string, to: string): Promise<{ ok: boolean; id?: string; error?: string }> => {
-    try {
-      const payload: any = { from, to: [to], subject: emailSubject, html: formattedHtml };
-      if (docxBase64 && filename) {
-        payload.attachments = [{ filename: filename || "intelligence-report.docx", content: docxBase64 }];
-      }
-      const r = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok && j.id) return { ok: true, id: j.id };
-      return { ok: false, error: j.message || j.error || `HTTP ${r.status}` };
-    } catch (err: any) {
-      return { ok: false, error: err?.message || "Network error" };
+  // Verified domain sender (ajstudioz.co.in is verified on Resend, delivers to any email)
+  const sender = "Optimus Intelligence <noreply@ajstudioz.co.in>";
+  
+  try {
+    const payload: any = { from: sender, to: [targetEmail], subject: emailSubject, html: formattedHtml };
+    if (docxBase64 && filename) {
+      payload.attachments = [{ filename: filename || "intelligence-report.docx", content: docxBase64 }];
     }
-  };
-
-  // Attempt 1 — verified domain (primary, always preferred)
-  let result = await attemptSend("Optimus Intelligence <noreply@ajstudioz.co.in>", targetEmail);
-  if (result.ok) {
-    return NextResponse.json({ status: "sent", success: true, provider: "Resend", emailId: result.id, targetEmail });
-  }
-  console.warn("Primary sender failed:", result.error);
-
-  // Attempt 2 — resend.dev sandbox fallback
-  result = await attemptSend("Optimus Intelligence <onboarding@resend.dev>", targetEmail);
-  if (result.ok) {
-    return NextResponse.json({ status: "sent", success: true, provider: "Resend (sandbox)", emailId: result.id, targetEmail });
-  }
-  console.warn("Sandbox sender failed:", result.error);
-
-  // Attempt 3 — last resort: deliver to account owner email
-  if (targetEmail !== RESEND_VERIFIED_OWNER) {
-    result = await attemptSend("Optimus Intelligence <onboarding@resend.dev>", RESEND_VERIFIED_OWNER);
-    if (result.ok) {
-      return NextResponse.json({
-        status: "sent", success: true, provider: "Resend (owner fallback)",
-        emailId: result.id, targetEmail: RESEND_VERIFIED_OWNER,
-        note: `Delivered to ${RESEND_VERIFIED_OWNER} (fallback). Could not reach: ${targetEmail}.`,
-      });
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.id) {
+      return NextResponse.json({ status: "sent", success: true, provider: "Resend", emailId: j.id, targetEmail });
     }
+    console.error("Resend API send error:", j);
+    return NextResponse.json(
+      { status: "failed", success: false, targetEmail, error: j.message || j.error || `Resend API returned HTTP ${r.status}` },
+      { status: 502 }
+    );
+  } catch (err: any) {
+    console.error("Send email error:", err);
+    return NextResponse.json(
+      { status: "failed", success: false, targetEmail, error: err?.message || "Network error" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json(
-    { status: "failed", success: false, targetEmail, error: result.error || "All delivery attempts failed." },
-    { status: 502 }
-  );
 }
 

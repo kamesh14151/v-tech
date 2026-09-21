@@ -29,7 +29,8 @@ export function RuleEngineView() {
   const { data: session } = useSession();
   const [rules, setRules] = useState<BusinessRule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState(session?.user?.email || "kamesh@optimus-intelligence.com");
+  const [userEmail, setUserEmail] = useState(session?.user?.email || "kamesh14151@gmail.com");
+  const [targetEmailState, setTargetEmailState] = useState(session?.user?.email || "kamesh14151@gmail.com");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<BusinessRule | null>(null);
   const [triggeringId, setTriggeringId] = useState<number | string | null>(null);
@@ -53,21 +54,27 @@ export function RuleEngineView() {
         const data = await res.json();
         if (data.userEmail) setUserEmail(data.userEmail);
         if (data.rules) {
-          const mapped: BusinessRule[] = data.rules.map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            topicDomain: r.condition_json?.topic_domain || "Fintech & Banking",
-            geography: r.condition_json?.geography || "Within Tamil Nadu (TN)",
-            recency: r.condition_json?.recency || "Last 24 Hours",
-            schedule: r.condition_json?.schedule || "Daily at 8:00 AM IST",
-            mandatoryTerms: r.condition_json?.mandatoryTerms || "All Sector Signals",
-            excludedTerms: r.condition_json?.excludedTerms || "None",
-            targetEmail: r.action_json?.email || data.userEmail || session?.user?.email || "Your Account Email",
-            format: r.action_json?.format || "Executive Briefing + Word Doc (.docx)",
-            status: r.is_active ? "Active" : "Paused",
-            triggeredCount: r.triggered_count || 0,
-            lastTriggered: r.last_triggered ? new Date(r.last_triggered).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently",
-          }));
+          const mapped: BusinessRule[] = data.rules.map((r: any) => {
+            const rawEmail = r.action_json?.email;
+            const cleanEmail = (rawEmail && !rawEmail.includes("optimus-intelligence.com") && !rawEmail.includes("optimus.co.in"))
+              ? rawEmail
+              : (data.userEmail || session?.user?.email || "kamesh14151@gmail.com");
+            return {
+              id: r.id,
+              name: r.name,
+              topicDomain: r.condition_json?.topic_domain || "Fintech & Banking",
+              geography: r.condition_json?.geography || "Within Tamil Nadu (TN)",
+              recency: r.condition_json?.recency || "Last 24 Hours",
+              schedule: r.condition_json?.schedule || "Daily at 8:00 AM IST",
+              mandatoryTerms: r.condition_json?.mandatoryTerms || "All Sector Signals",
+              excludedTerms: r.condition_json?.excludedTerms || "None",
+              targetEmail: cleanEmail,
+              format: r.action_json?.format || "Executive Briefing + Word Doc (.docx)",
+              status: r.is_active ? "Active" : "Paused",
+              triggeredCount: r.triggered_count || 0,
+              lastTriggered: r.last_triggered ? new Date(r.last_triggered).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently",
+            };
+          });
           setRules(mapped);
         }
       }
@@ -91,6 +98,7 @@ export function RuleEngineView() {
     setRecency("Last 24 Hours");
     setMandatoryTerms("");
     setExcludedTerms("");
+    setTargetEmailState(session?.user?.email || userEmail || "kamesh14151@gmail.com");
     setIsModalOpen(true);
   };
 
@@ -103,6 +111,7 @@ export function RuleEngineView() {
     setRecency(rule.recency);
     setMandatoryTerms(rule.mandatoryTerms === "All Sector Signals" ? "" : rule.mandatoryTerms);
     setExcludedTerms(rule.excludedTerms === "None" ? "" : rule.excludedTerms);
+    setTargetEmailState(rule.targetEmail || session?.user?.email || "kamesh14151@gmail.com");
     setIsModalOpen(true);
   };
 
@@ -120,8 +129,8 @@ export function RuleEngineView() {
     };
 
     const action_json = {
-      action: `Email Daily Briefing + Word Doc (.docx) to ${userEmail}`,
-      email: userEmail,
+      action: `Email Daily Briefing + Word Doc (.docx) to ${targetEmailState}`,
+      email: targetEmailState,
       format,
     };
 
@@ -487,12 +496,14 @@ export function RuleEngineView() {
               </div>
 
               <div>
-                <label className="block text-muted-foreground mb-1">Delivery Destination & Format</label>
+                <label className="block text-muted-foreground mb-1">Target Recipient Email Address</label>
                 <input
                   type="email"
-                  disabled
-                  value={`Sent via Resend to: ${userEmail}`}
-                  className="w-full px-3.5 py-2 rounded-xl border border-foreground/10 bg-foreground/5 text-muted-foreground"
+                  required
+                  placeholder="e.g. kamesh14151@gmail.com"
+                  value={targetEmailState}
+                  onChange={e => setTargetEmailState(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-foreground/15 bg-background focus:outline-none focus:border-foreground/40"
                 />
               </div>
 

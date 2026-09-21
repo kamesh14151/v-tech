@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   }
 
   const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
-  const userEmail = session.user.email || "user@optimus-intelligence.com";
+  const userEmail = session.user.email || "kamesh14151@gmail.com";
 
   try {
     await ensureRulesTable();
@@ -254,7 +254,10 @@ export async function PATCH(req: NextRequest) {
         };
       }
 
-      const targetEmail = rule.action_json?.email || session.user.email || "recipient@optimus.co.in";
+      const rawEmail = rule.action_json?.email;
+      const targetEmail = (rawEmail && !rawEmail.includes("optimus-intelligence.com") && !rawEmail.includes("optimus.co.in"))
+        ? rawEmail
+        : (session.user.email || "kamesh14151@gmail.com");
       const topicDomain = rule.condition_json?.topic_domain || "IT Companies & Tech";
       const location = rule.condition_json?.geography || "India (National)";
       const recency = rule.condition_json?.recency || "Last 24 Hours";
