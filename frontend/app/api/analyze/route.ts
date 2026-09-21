@@ -14,12 +14,28 @@ async function fetchLiveNewsForQuery(query: string, location: string, recency: s
   else if (rLower.includes("week") || rLower.includes("7")) tbsParam = "&tbs=qdr:w";
   else if (rLower.includes("month") || rLower.includes("30")) tbsParam = "&tbs=qdr:m";
 
+  const qLower = cleanQ.toLowerCase();
+  const searchTerms = [cleanQ];
+  if (qLower.includes("mutual") || qLower.includes("fund")) {
+    searchTerms.push(`${cleanQ} SIP equity AMFI`);
+    searchTerms.push(`${cleanQ} NAV asset management`);
+  } else if (qLower.includes("fintech") || qLower.includes("bank")) {
+    searchTerms.push(`${cleanQ} UPI RBI payments`);
+    searchTerms.push(`${cleanQ} Razorpay digital banking`);
+  } else if (qLower.includes("cinema") || qLower.includes("movie") || qLower.includes("entertainment")) {
+    searchTerms.push(`${cleanQ} Kollywood box office`);
+    searchTerms.push(`${cleanQ} OTT release theatre`);
+  } else {
+    searchTerms.push(`${cleanQ} news`);
+    searchTerms.push(`${cleanQ} updates`);
+  }
+
   try {
-    const urls = [
-      `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQ)}${tbsParam}&hl=en-IN&gl=IN&ceid=IN:en`,
-      `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQ + " news")}${tbsParam}&hl=en-IN&gl=IN&ceid=IN:en`,
-      `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQ)}${tbsParam}&hl=en-US&gl=US&ceid=US:en`,
-    ];
+    const urls: string[] = [];
+    for (const term of searchTerms) {
+      urls.push(`https://news.google.com/rss/search?q=${encodeURIComponent(term)}${tbsParam}&hl=en-IN&gl=IN&ceid=IN:en`);
+      urls.push(`https://news.google.com/rss/search?q=${encodeURIComponent(term)}${tbsParam}&hl=en-US&gl=US&ceid=US:en`);
+    }
 
     const responses = await Promise.all(
       urls.map((u) => fetch(u, { next: { revalidate: 60 } }).then((r) => (r.ok ? r.text() : "")).catch(() => ""))

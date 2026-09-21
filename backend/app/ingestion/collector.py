@@ -450,25 +450,89 @@ async def collect_gdelt_cloud_api(client: httpx.AsyncClient, query: str) -> list
     return []
 
 
+async def expand_query_with_llm(query: str, topic_domain: str = "") -> list[str]:
+    """
+    LLM-powered Query Understanding & Semantic Search Term Generator.
+    Analyzes user query and topic domain using LLM to generate 4-6 semantically rich search terms.
+    """
+    clean_q = query.strip() if query else ""
+    for noise in ["Within ", "India (National)", "India National", "Tamil Nadu (TN)", "(TN)", "(National)", "Global (All)"]:
+        clean_q = clean_q.replace(noise, "").strip()
+
+    if not clean_q:
+        return ["breaking news"]
+
+    search_queries = [clean_q]
+
+    try:
+        from app.services.llm import llm
+        system_prompt = (
+            "You are Optimus AI Query Understanding Agent. "
+            "Analyze the user query and produce 4-5 expanded semantic search queries. "
+            "Include key sub-topics, industry jargon, entity synonyms, and regional context if specified. "
+            "Return JSON matching schema strictly."
+        )
+        user_prompt = f"User Query: '{clean_q}'\nTopic Sector: '{topic_domain}'"
+        schema = {
+            "type": "object",
+            "properties": {
+                "search_queries": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                }
+            },
+            "required": ["search_queries"]
+        }
+        res = llm.json(system_prompt, user_prompt, schema)
+        expanded = res.get("search_queries", [])
+        if expanded and isinstance(expanded, list):
+            for term in expanded:
+                if term and isinstance(term, str) and term.strip() and term.strip() not in search_queries:
+                    search_queries.append(term.strip())
+    except Exception as exc:
+        log.info("LLM query expansion notice: %s", exc)
+
+    if len(search_queries) < 3:
+        q_lower = clean_q.lower()
+        if "mutual" in q_lower or "fund" in q_lower:
+            search_queries.extend([f"{clean_q} SIP equity", f"{clean_q} AMFI NAV", f"{clean_q} asset management SEBI"])
+        elif "fintech" in q_lower or "bank" in q_lower:
+            search_queries.extend([f"{clean_q} UPI payments", f"{clean_q} RBI digital banking", f"{clean_q} Razorpay PhonePe"])
+        elif "cinema" in q_lower or "movie" in q_lower or "entertainment" in q_lower:
+            search_queries.extend([f"{clean_q} Kollywood box office", f"{clean_q} OTT release film", f"{clean_q} movie theatre Collection"])
+        else:
+            search_queries.extend([f"{clean_q} news", f"{clean_q} updates", f"{clean_q} market impact"])
+
+    return search_queries[:6]
+
+
 async def collect_raw_articles(
     query: str = "",
     recency: str = "Last 24 Hours",
 ) -> tuple[list[RawArticle], dict[str, int]]:
     """
     Collect real articles from all available sources (GDELT, NewsAPI, The Guardian, GNews, RSS, Web Search),
+    using LLM query understanding to expand queries semantically before discovery,
     deduplicate, and return both articles and a per-source breakdown count.
     Returns: (deduplicated articles, {source_name: count})
     """
-    async with httpx.AsyncClient(timeout=4.0) as client:
-        gdelt_task = collect_gdelt_cloud_api(client, query)
-        na_task = collect_newsapi(client, query, recency)
-        gd_task = collect_guardian(client, query, recency)
-        gnews_api_task = collect_gnews_api(client, query, recency)
-        rss_task = collect_rss_all(client)
-        gnews_task = collect_google_news_rss(client, query, recency)
-        web_task = collect_web_search_news(client, query)
+    expanded_terms = await expand_query_with_llm(query=query)
+    primary_query = expanded_terms[0] if expanded_terms else query
+    log.info("LLM query expansion generated search terms for '%s': %s", query, expanded_terms)
 
-        results = await asyncio.gather(gdelt_task, na_task, gd_task, gnews_api_task, rss_task, gnews_task, web_task, return_exceptions=True)
+    async with httpx.AsyncClient(timeout=4.0) as client:
+        gdelt_task = collect_gdelt_cloud_api(client, primary_query)
+        na_task = collect_newsapi(client, primary_query, recency)
+        gd_task = collect_guardian(client, primary_query, recency)
+        gnews_api_task = collect_gnews_api(client, primary_query, recency)
+        rss_task = collect_rss_all(client)
+
+        gnews_tasks = [collect_google_news_rss(client, term, recency) for term in expanded_terms[:4]]
+        web_tasks = [collect_web_search_news(client, term) for term in expanded_terms[:3]]
+
+        results = await asyncio.gather(
+            gdelt_task, na_task, gd_task, gnews_api_task, rss_task, *gnews_tasks, *web_tasks, return_exceptions=True
+        )
 
     all_raw: list[RawArticle] = []
     for r in results:

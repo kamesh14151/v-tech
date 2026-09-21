@@ -46,12 +46,15 @@ def matches_geography(text: str, location: str) -> bool:
 
 
 DOMAIN_SYNONYMS = {
+    "mutual funds": {"mutual", "fund", "funds", "sip", "amfi", "nav", "equity", "asset", "sebi", "portfolio", "nfo", "zerodha", "groww"},
+    "mutual": {"mutual", "fund", "funds", "sip", "amfi", "nav", "equity", "asset", "sebi", "portfolio"},
+    "fintech": {"fintech", "banking", "bank", "payments", "upi", "rbi", "razorpay", "phonepe", "paytm", "neobank", "loan", "lending", "credit"},
+    "banking": {"bank", "banking", "fintech", "finance", "financial", "payment", "upi", "rbi", "stock", "market", "share", "investment", "tax", "economy"},
     "cinema": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office", "starrer", "hero", "heroine", "cast", "review"},
     "entertainment": {"movie", "movies", "film", "films", "actor", "actress", "director", "kollywood", "bollywood", "hollywood", "cinema", "entertainment", "ott", "series", "trailer", "song", "release", "theatre", "box office", "starrer", "hero", "heroine", "cast", "review"},
     "sports": {"cricket", "sports", "match", "ipl", "bcci", "t20", "test", "odi", "stadium", "trophy", "cup", "champion", "team", "player", "captain", "score", "wicket", "run", "football"},
     "cricket": {"cricket", "sports", "match", "ipl", "bcci", "t20", "test", "odi", "stadium", "trophy", "cup", "champion", "team", "player", "captain", "score", "wicket", "run"},
     "tech": {"tech", "technology", "it", "software", "ai", "artificial intelligence", "app", "digital", "startup", "cloud", "cyber", "data", "mobile", "gadget"},
-    "banking": {"bank", "banking", "fintech", "finance", "financial", "payment", "upi", "rbi", "stock", "market", "share", "investment", "tax", "economy"},
 }
 
 

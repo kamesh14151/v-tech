@@ -710,7 +710,16 @@ export function ExecutiveDashboardView({
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
                 <span className="font-bold tracking-widest text-zinc-900 uppercase">OPTIMUS AI INTELLIGENCE</span>
               </div>
-              <div className="text-[10px] sm:text-xs">{report ? new Date(report.generatedAt).toLocaleString("en-US", { dateStyle: "full" }) : ""}</div>
+              <div className="text-[10px] sm:text-xs">
+                {(() => {
+                  if (!report) return new Date().toLocaleDateString("en-US", { dateStyle: "full" });
+                  const rawDate = report.generatedAt || report.created_at || report.generated_at;
+                  const d = rawDate ? new Date(rawDate) : new Date();
+                  return isNaN(d.getTime())
+                    ? new Date().toLocaleDateString("en-US", { dateStyle: "full" })
+                    : d.toLocaleDateString("en-US", { dateStyle: "full" });
+                })()}
+              </div>
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-semibold tracking-tight text-zinc-950">
