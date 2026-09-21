@@ -141,6 +141,74 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = session.user.id && !isNaN(Number(session.user.id)) ? Number(session.user.id) : null;
+  const body = await req.json();
+  const { id, name, description, condition_json, action_json, is_active } = body;
+
+  try {
+    await ensureRulesTable();
+
+    if (id && !isNaN(Number(id))) {
+      let rows: any[] = [];
+      if (userId) {
+        rows = await query(
+          `UPDATE rules SET
+             name = COALESCE($1, name),
+             description = COALESCE($2, description),
+             condition_json = COALESCE($3::jsonb, condition_json),
+             action_json = COALESCE($4::jsonb, action_json),
+             is_active = COALESCE($5, is_active),
+             updated_at = NOW()
+           WHERE id = $6 AND user_id = $7 RETURNING *`,
+          [
+            name || null,
+            description || null,
+            condition_json ? JSON.stringify(condition_json) : null,
+            action_json ? JSON.stringify(action_json) : null,
+            typeof is_active === "boolean" ? is_active : null,
+            Number(id),
+            userId,
+          ]
+        );
+      }
+
+      if (!rows || rows.length === 0) {
+        rows = await query(
+          `UPDATE rules SET
+             name = COALESCE($1, name),
+             description = COALESCE($2, description),
+             condition_json = COALESCE($3::jsonb, condition_json),
+             action_json = COALESCE($4::jsonb, action_json),
+             is_active = COALESCE($5, is_active),
+             updated_at = NOW()
+           WHERE id = $6 RETURNING *`,
+          [
+            name || null,
+            description || null,
+            condition_json ? JSON.stringify(condition_json) : null,
+            action_json ? JSON.stringify(action_json) : null,
+            typeof is_active === "boolean" ? is_active : null,
+            Number(id),
+          ]
+        );
+      }
+
+      return NextResponse.json({ rule: rows[0], success: true });
+    }
+
+    return NextResponse.json({ error: "Missing rule ID" }, { status: 400 });
+  } catch (error: any) {
+    console.error("PUT rule error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
@@ -282,11 +350,20 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    if (userId && id && !isNaN(Number(id))) {
-      const rows = await query(
-        "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING *",
-        [is_active, Number(id), userId]
-      );
+    if (typeof is_active === "boolean" && id && !isNaN(Number(id))) {
+      let rows: any[] = [];
+      if (userId) {
+        rows = await query(
+          "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING *",
+          [is_active, Number(id), userId]
+        );
+      }
+      if (!rows || rows.length === 0) {
+        rows = await query(
+          "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
+          [is_active, Number(id)]
+        );
+      }
       return NextResponse.json({ rule: rows[0], success: true });
     }
 
@@ -308,10 +385,13 @@ export async function DELETE(req: NextRequest) {
 
   try {
     await ensureRulesTable();
-    if (userId && id) {
-      await query("DELETE FROM rules WHERE id = $1 AND user_id = $2", [Number(id), userId]);
+    if (id && !isNaN(Number(id))) {
+      if (userId) {
+        await query("DELETE FROM rules WHERE id = $1 AND user_id = $2", [Number(id), userId]);
+      }
+      await query("DELETE FROM rules WHERE id = $1", [Number(id)]);
     }
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deletedId: id });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

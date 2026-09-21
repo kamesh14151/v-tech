@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import {
-  Sliders, Plus, Trash2, Globe, Clock, Shield, CheckCircle2,
+  Sliders, Plus, Trash2, Pencil, Globe, Clock, Shield, CheckCircle2,
   Play, Pause, AlertTriangle, Sparkles, Loader2, Mail, Send,
-  FileDown, Check, RefreshCw, Calendar, ArrowRight, Zap, Bell
+  FileDown, Check, RefreshCw, Calendar, ArrowRight, Zap, Bell, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -31,6 +31,7 @@ export function RuleEngineView() {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState(session?.user?.email || "kamesh@optimus-intelligence.com");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<BusinessRule | null>(null);
   const [triggeringId, setTriggeringId] = useState<number | string | null>(null);
   const [triggeredSuccess, setTriggeredSuccess] = useState<string | null>(null);
 
@@ -81,7 +82,31 @@ export function RuleEngineView() {
     fetchRules();
   }, [fetchRules]);
 
-  const handleCreateRule = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingRule(null);
+    setName("");
+    setTopicDomain("Fintech & Banking");
+    setGeography("Within Tamil Nadu (TN)");
+    setSchedule("Daily at 8:00 AM IST");
+    setRecency("Last 24 Hours");
+    setMandatoryTerms("");
+    setExcludedTerms("");
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (rule: BusinessRule) => {
+    setEditingRule(rule);
+    setName(rule.name);
+    setTopicDomain(rule.topicDomain);
+    setGeography(rule.geography);
+    setSchedule(rule.schedule);
+    setRecency(rule.recency);
+    setMandatoryTerms(rule.mandatoryTerms === "All Sector Signals" ? "" : rule.mandatoryTerms);
+    setExcludedTerms(rule.excludedTerms === "None" ? "" : rule.excludedTerms);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveRule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
@@ -101,28 +126,40 @@ export function RuleEngineView() {
     };
 
     try {
-      const res = await fetch("/api/rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description: `Automated ${schedule} briefing for ${topicDomain} in ${geography}`,
-          condition_json,
-          action_json,
-        }),
-      });
-
-      if (res.ok) {
-        fetchRules();
+      if (editingRule) {
+        // Update existing rule via PUT /api/rules
+        const res = await fetch("/api/rules", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingRule.id,
+            name,
+            description: `Automated ${schedule} briefing for ${topicDomain} in ${geography}`,
+            condition_json,
+            action_json,
+          }),
+        });
+        if (res.ok) fetchRules();
+      } else {
+        // Create new rule via POST /api/rules
+        const res = await fetch("/api/rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            description: `Automated ${schedule} briefing for ${topicDomain} in ${geography}`,
+            condition_json,
+            action_json,
+          }),
+        });
+        if (res.ok) fetchRules();
       }
     } catch (e) {
       console.error(e);
     }
 
-    setName("");
-    setMandatoryTerms("");
-    setExcludedTerms("");
     setIsModalOpen(false);
+    setEditingRule(null);
   };
 
   const handleTriggerNow = async (rule: BusinessRule) => {
@@ -143,13 +180,6 @@ export function RuleEngineView() {
         );
         fetchRules();
         setTimeout(() => setTriggeredSuccess(null), 6000);
-      } else if (data.gmailComposeUrl) {
-        window.open(data.gmailComposeUrl, "_blank");
-        setTriggeredSuccess(
-          `Opened Gmail compose tab with pre-filled briefing for ${data.targetEmail || rule.targetEmail}.`
-        );
-        fetchRules();
-        setTimeout(() => setTriggeredSuccess(null), 6000);
       } else if (res.ok) {
         setTriggeredSuccess(
           `Rule executed & dispatched to ${rule.targetEmail}!`
@@ -166,24 +196,35 @@ export function RuleEngineView() {
 
   const toggleStatus = async (id: number | string) => {
     const current = rules.find(r => r.id === id);
-    const newStatus = current?.status === "Active" ? "Paused" : "Active";
+    if (!current) return;
+    const newStatus = current.status === "Active" ? "Paused" : "Active";
+    const newIsActive = newStatus === "Active";
+
+    // Optimistic UI update
     setRules(rules.map(r => r.id === id ? { ...r, status: newStatus } : r));
 
     try {
-      await fetch("/api/rules", {
+      const res = await fetch("/api/rules", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, is_active: newStatus === "Active" }),
+        body: JSON.stringify({ id, is_active: newIsActive }),
       });
+      if (res.ok) {
+        fetchRules();
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
   const deleteRule = async (id: number | string) => {
+    if (!confirm("Are you sure you want to delete this morning briefing rule?")) return;
     setRules(rules.filter(r => r.id !== id));
     try {
-      await fetch(`/api/rules?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/rules?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        fetchRules();
+      }
     } catch (e) {
       console.error(e);
     }
@@ -202,12 +243,12 @@ export function RuleEngineView() {
           </div>
           <h1 className="text-2xl font-display tracking-tight">Automated Morning Briefing & Alert Rules</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Configurable media automation rules delivering daily intelligence summaries and Word Documents (.docx) straight to your verified email.
+            Configurable media automation rules delivering daily intelligence summaries straight to your verified email via Resend API.
           </p>
         </div>
 
         <Button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreate}
           className="bg-foreground text-background hover:bg-foreground/85 rounded-full px-5 font-mono text-xs gap-2 shrink-0 shadow-sm"
         >
           <Plus className="w-4 h-4" /> Create Automation Rule
@@ -226,7 +267,7 @@ export function RuleEngineView() {
           </div>
         </div>
         <div className="text-[11px] font-mono text-muted-foreground bg-foreground/3 px-3 py-1.5 rounded-xl border border-foreground/5">
-          Automatic delivery in formatted executive text + Word (.docx) attachment
+          Resend API Sender: Optimus Intelligence &lt;noreply@ajstudioz.co.in&gt;
         </div>
       </div>
 
@@ -235,9 +276,9 @@ export function RuleEngineView() {
         <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2.5 text-xs font-mono">
             <Check className="w-4 h-4 shrink-0" />
-            <span><strong>Rule Dispatched!</strong> {triggeredSuccess}</span>
+            <span><strong>Rule Action Triggered!</strong> {triggeredSuccess}</span>
           </div>
-          <span className="text-[10px] font-mono uppercase font-bold bg-emerald-500/20 px-2 py-0.5 rounded">Sent</span>
+          <span className="text-[10px] font-mono uppercase font-bold bg-emerald-500/20 px-2 py-0.5 rounded">Success</span>
         </div>
       )}
 
@@ -253,26 +294,50 @@ export function RuleEngineView() {
             <div
               key={rule.id}
               className={`p-6 rounded-2xl border transition-all ${
-                rule.status === "Active" ? "border-foreground/15 bg-card" : "border-foreground/8 bg-muted/20 opacity-70"
+                rule.status === "Active" ? "border-foreground/15 bg-card shadow-sm" : "border-foreground/8 bg-muted/20 opacity-70"
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2.5">
                   <span className={`w-2.5 h-2.5 rounded-full ${rule.status === "Active" ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
                   <h3 className="font-semibold text-base text-foreground">{rule.name}</h3>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-foreground/10 bg-foreground/5 text-muted-foreground">
+                  <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border font-semibold ${
+                    rule.status === "Active" ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400" : "bg-muted border-foreground/10 text-muted-foreground"
+                  }`}>
                     {rule.status}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2.5 font-mono text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                   <span>Dispatched: <strong className="text-foreground">{rule.triggeredCount} times</strong></span>
                   <span>•</span>
                   <span>Last: {rule.lastTriggered}</span>
-                  <button onClick={() => toggleStatus(rule.id)} className="p-1 hover:text-foreground ml-2" title={rule.status === "Active" ? "Pause Rule" : "Activate Rule"}>
+                  
+                  <button
+                    onClick={() => toggleStatus(rule.id)}
+                    className={`p-1.5 rounded-lg border transition-all ml-2 ${
+                      rule.status === "Active"
+                        ? "hover:bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                        : "hover:bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                    }`}
+                    title={rule.status === "Active" ? "Pause Rule Automation" : "Activate Rule Automation"}
+                  >
                     {rule.status === "Active" ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                   </button>
-                  <button onClick={() => deleteRule(rule.id)} className="p-1 hover:text-red-500 text-muted-foreground" title="Delete Rule">
+
+                  <button
+                    onClick={() => handleOpenEdit(rule)}
+                    className="p-1.5 rounded-lg border border-foreground/10 hover:border-foreground/30 hover:bg-foreground/5 text-muted-foreground hover:text-foreground transition-all"
+                    title="Edit Rule Criteria"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={() => deleteRule(rule.id)}
+                    className="p-1.5 rounded-lg border border-foreground/10 hover:border-red-500/30 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all"
+                    title="Delete Rule"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -320,37 +385,41 @@ export function RuleEngineView() {
                   size="sm"
                   onClick={() => handleTriggerNow(rule)}
                   disabled={triggeringId === rule.id}
-                  className="bg-foreground text-background hover:bg-foreground/85 rounded-full text-xs font-mono gap-1.5 shrink-0"
+                  className="bg-foreground text-background hover:bg-foreground/85 rounded-full text-xs font-mono gap-1.5 shrink-0 shadow-sm"
                 >
-                  {triggeringId === rule.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                  {triggeringId === rule.id ? "Synthesizing & Sending..." : "Send Test Briefing to Email"}
+                  {triggeringId === rule.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  {triggeringId === rule.id ? "Sending via Resend..." : "Run Automation & Send Email"}
                 </Button>
               </div>
             </div>
           ))}
 
           {rules.length === 0 && (
-            <div className="p-12 text-center border border-dashed border-foreground/15 rounded-2xl">
+            <div className="p-12 text-center border border-dashed border-foreground/15 rounded-2xl bg-card">
               <Mail className="w-10 h-10 mx-auto text-muted-foreground/50 mb-3" />
               <div className="text-sm font-semibold text-foreground">No Automation Rules Configured</div>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                Create a rule to receive daily morning intelligence digests and Word (.docx) reports automatically in your email.
+                Create a rule to receive daily morning intelligence digests automatically in your email via Resend API.
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Create Modal */}
+      {/* Create / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
           <div className="w-full max-w-lg rounded-2xl border border-foreground/15 bg-background p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-display font-semibold">Create Email Intelligence Rule</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+              <h2 className="text-lg font-display font-semibold">
+                {editingRule ? "Edit Morning Briefing Rule" : "Create Email Intelligence Rule"}
+              </h2>
+              <button onClick={() => { setIsModalOpen(false); setEditingRule(null); }} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateRule} className="space-y-3 font-mono text-xs">
+            <form onSubmit={handleSaveRule} className="space-y-3 font-mono text-xs">
               <div>
                 <label className="block text-muted-foreground mb-1">Rule Name</label>
                 <input
@@ -359,7 +428,7 @@ export function RuleEngineView() {
                   placeholder="e.g. Daily Fintech & Payments Intelligence Digest"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-foreground/15 bg-background focus:outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-foreground/15 bg-background focus:outline-none focus:border-foreground/40"
                 />
               </div>
 
@@ -407,21 +476,32 @@ export function RuleEngineView() {
               </div>
 
               <div>
+                <label className="block text-muted-foreground mb-1">Mandatory Keywords (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. RBI, UPI, expansion, leadership"
+                  value={mandatoryTerms}
+                  onChange={e => setMandatoryTerms(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-foreground/15 bg-background focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label className="block text-muted-foreground mb-1">Delivery Destination & Format</label>
                 <input
                   type="email"
                   disabled
-                  value={`Sent to: ${userEmail} (Executive Text + Word .docx)`}
+                  value={`Sent via Resend to: ${userEmail}`}
                   className="w-full px-3.5 py-2 rounded-xl border border-foreground/10 bg-foreground/5 text-muted-foreground"
                 />
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-foreground/10">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} className="rounded-full text-xs">
+                <Button type="button" variant="outline" onClick={() => { setIsModalOpen(false); setEditingRule(null); }} className="rounded-full text-xs">
                   Cancel
                 </Button>
                 <Button type="submit" className="bg-foreground text-background hover:bg-foreground/90 rounded-full text-xs font-semibold">
-                  Save & Enable Automation
+                  {editingRule ? "Save Rule Changes" : "Save & Enable Automation"}
                 </Button>
               </div>
             </form>
