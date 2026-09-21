@@ -333,8 +333,8 @@ export function WorkspaceLayout({
       )}
 
       {/* Header */}
-      <header className="h-16 border-b border-foreground/10 bg-background/95 backdrop-blur-xl px-3 sm:px-6 flex items-center justify-between shrink-0 z-30 sticky top-0">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <header className="h-14 border-b border-foreground/10 bg-background/95 backdrop-blur-xl px-3 sm:px-5 flex items-center justify-between shrink-0 z-30 sticky top-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           {/* Mobile menu toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -346,141 +346,123 @@ export function WorkspaceLayout({
 
           {/* Logo */}
           <div className="flex items-center gap-2 cursor-pointer shrink-0" onClick={() => setActiveModule("dashboard")}>
-            <img src="/logo.jpeg" alt="Optimus Logo" className="w-8 h-8 rounded-xl object-cover border border-foreground/10 shadow-sm" />
+            <img src="/logo.jpeg" alt="Optimus Logo" className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-cover border border-foreground/10 shadow-sm" />
             <div className="hidden sm:block">
-              <span className="font-display font-semibold tracking-tight text-base leading-tight block">Optimus</span>
-              <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-widest block -mt-1">Media Discovery</span>
+              <span className="font-display font-semibold tracking-tight text-sm sm:text-base leading-tight block">Optimus</span>
+              <span className="font-mono text-[8px] sm:text-[9px] text-muted-foreground uppercase tracking-widest block -mt-1">Media Discovery</span>
             </div>
           </div>
 
           <div className="h-4 w-px bg-foreground/10 hidden md:block shrink-0" />
 
-          {/* 1. Topic & News Title Search Pill Button */}
-          <button
-            onClick={() => setIsDomainModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-foreground/15 bg-background/60 backdrop-blur-md text-xs font-mono text-foreground hover:bg-foreground/8 transition-all max-w-[160px] sm:max-w-60 truncate shadow-sm"
-          >
-            <Search className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-            <span className="font-semibold truncate text-[11px] sm:text-xs">Topic: "{topicQuery || topicDomain}"</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
-          </button>
-
-          {/* 1b. Select Industry Domain Button */}
-          <button
-            onClick={() => setIsIndustryModalOpen(true)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-foreground/15 bg-foreground/5 text-xs font-mono text-foreground hover:bg-foreground/10 transition-all truncate shadow-sm"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="font-semibold text-[11px] sm:text-xs truncate">Domain: {topicDomain}</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
-          </button>
-
-          {/* 2. Location Scope Pill */}
-          <div className="relative hidden md:block">
+          {/* Compact Pill Controls Group */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+            {/* 1. Topic Search Modal Trigger */}
             <button
-              onClick={() => { setIsLocationDropdownOpen(!isLocationDropdownOpen); setIsRecencyDropdownOpen(false); }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-foreground/10 bg-foreground/3 text-xs font-mono text-foreground hover:bg-foreground/8 transition-colors"
+              onClick={() => setIsDomainModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-foreground/15 bg-background/70 backdrop-blur-md text-[11px] font-mono text-foreground hover:bg-foreground/10 transition-all max-w-[140px] sm:max-w-48 truncate shadow-xs"
+              title="Search Specific News Title / Topic"
             >
-              <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span className="font-medium">{location}</span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+              <Search className="w-3 h-3 text-blue-500 shrink-0" />
+              <span className="font-semibold truncate">"{topicQuery || topicDomain}"</span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 opacity-60" />
             </button>
 
-            {isLocationDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-60 rounded-2xl border border-foreground/15 bg-background p-2 shadow-2xl z-30 font-mono text-xs space-y-1">
-                <div className="px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                  Location Scope
-                </div>
-                {QUICK_LOCATIONS.map((loc) => (
-                  <button
-                    key={loc}
-                    onClick={() => handleLocationSelect(loc)}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-left transition-colors ${
-                      location === loc ? "bg-foreground text-background font-semibold" : "text-foreground hover:bg-foreground/5"
-                    }`}
-                  >
-                    <span>{loc}</span>
-                    {location === loc && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 3. Recency Time Window Pill */}
-          <div className="relative hidden lg:block">
+            {/* 2. Industry Domain Modal Trigger */}
             <button
-              onClick={() => { setIsRecencyDropdownOpen(!isRecencyDropdownOpen); setIsLocationDropdownOpen(false); }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-foreground/10 bg-foreground/3 text-xs font-mono text-foreground hover:bg-foreground/8 transition-colors"
+              onClick={() => setIsIndustryModalOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-foreground/15 bg-foreground/5 text-[11px] font-mono text-foreground hover:bg-foreground/10 transition-all max-w-40 truncate shadow-xs"
+              title="Select Industry Domain"
             >
-              <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <span className="font-medium">{recency}</span>
-              <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+              <span className="font-semibold truncate">{topicDomain}</span>
+              <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 opacity-60" />
             </button>
 
-            {isRecencyDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-52 rounded-2xl border border-foreground/15 bg-background p-2 shadow-2xl z-30 font-mono text-xs space-y-1">
-                <div className="px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                  Time Window
+            {/* 3. Location Scope Dropdown Pill */}
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => { setIsLocationDropdownOpen(!isLocationDropdownOpen); setIsRecencyDropdownOpen(false); }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-foreground/10 bg-foreground/3 text-[11px] font-mono text-foreground hover:bg-foreground/8 transition-colors"
+              >
+                <Globe className="w-3 h-3 text-emerald-500 shrink-0" />
+                <span className="font-medium truncate max-w-28">{location.replace("Within ", "").replace(" (TN)", " TN")}</span>
+                <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 opacity-60" />
+              </button>
+
+              {isLocationDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-56 rounded-2xl border border-foreground/15 bg-background p-1.5 shadow-2xl z-30 font-mono text-xs space-y-0.5">
+                  <div className="px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold border-b border-foreground/10 mb-1">
+                    Location Scope
+                  </div>
+                  {QUICK_LOCATIONS.map((loc) => (
+                    <button
+                      key={loc}
+                      onClick={() => handleLocationSelect(loc)}
+                      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-left transition-colors text-xs ${
+                        location === loc ? "bg-foreground text-background font-semibold" : "text-foreground hover:bg-foreground/5"
+                      }`}
+                    >
+                      <span>{loc}</span>
+                      {location === loc && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
                 </div>
-                {QUICK_RECENCY.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => handleRecencySelect(r)}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-left transition-colors ${
-                      recency === r ? "bg-foreground text-background font-semibold" : "text-foreground hover:bg-foreground/5"
-                    }`}
-                  >
-                    <span>{r}</span>
-                    {recency === r && <Check className="w-3.5 h-3.5" />}
-                  </button>
-                ))}
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* 4. Recency Time Window Dropdown Pill */}
+            <div className="relative hidden lg:block">
+              <button
+                onClick={() => { setIsRecencyDropdownOpen(!isRecencyDropdownOpen); setIsLocationDropdownOpen(false); }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-foreground/10 bg-foreground/3 text-[11px] font-mono text-foreground hover:bg-foreground/8 transition-colors"
+              >
+                <Clock className="w-3 h-3 text-purple-500 shrink-0" />
+                <span className="font-medium">{recency.replace("Past ", "")}</span>
+                <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 opacity-60" />
+              </button>
+
+              {isRecencyDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-48 rounded-2xl border border-foreground/15 bg-background p-1.5 shadow-2xl z-30 font-mono text-xs space-y-0.5">
+                  <div className="px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold border-b border-foreground/10 mb-1">
+                    Time Window
+                  </div>
+                  {QUICK_RECENCY.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => handleRecencySelect(r)}
+                      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-left transition-colors text-xs ${
+                        recency === r ? "bg-foreground text-background font-semibold" : "text-foreground hover:bg-foreground/5"
+                      }`}
+                    >
+                      <span>{r}</span>
+                      {recency === r && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Global Search Bar (Desktop) */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-xs xl:max-w-sm mx-3 hidden md:flex items-center relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10 pointer-events-none" />
-          <input
-            ref={searchRef}
-            type="text"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            placeholder={`Search topic (e.g. PayU, IPL)...`}
-            className="w-full pl-8 pr-8 py-1.5 text-xs font-mono rounded-full border border-foreground/15 bg-background/60 focus:bg-background focus:outline-none focus:border-foreground/40 transition-all"
-          />
-          {searchInput && (
-            <button type="button" onClick={clearQuery} className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <button
-            type="submit"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center hover:bg-foreground/85 transition-colors"
-          >
-            <Search className="w-2.5 h-2.5" />
-          </button>
-        </form>
-
-        <div className="flex items-center gap-2">
+        {/* Right Section Controls */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Multi-Lingual Translation Selector */}
           <GoogleTranslateSelector />
 
-          {/* User Profile & Signout */}
+          {/* Compact User Profile & Signout */}
           {user || session?.user ? (
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="flex items-center gap-1.5 bg-foreground/5 border border-foreground/10 rounded-full pl-1.5 pr-2.5 py-1 text-xs font-mono">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-foreground font-medium truncate max-w-24 sm:max-w-32 text-[11px] sm:text-xs">
-                  {session?.user?.name || user?.name || effectiveEmail.split("@")[0]}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 bg-foreground/5 border border-foreground/10 rounded-full pl-2 pr-2.5 py-1 text-[11px] font-mono" title={effectiveEmail}>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-foreground font-medium truncate max-w-20 sm:max-w-28">
+                  {session?.user?.name?.split(" ")[0] || user?.name?.split(" ")[0] || effectiveEmail.split("@")[0]}
                 </span>
               </div>
 
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="p-1 rounded-full hover:bg-foreground/5 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1.5 rounded-full hover:bg-foreground/8 text-muted-foreground hover:text-foreground transition-colors"
                 title="Sign out"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -495,23 +477,7 @@ export function WorkspaceLayout({
       </header>
 
       {/* Mobile Search & Controls Bar */}
-      <div className="p-3 border-b border-foreground/8 bg-background/50 md:hidden flex items-center gap-2">
-        <form onSubmit={handleSearch} className="flex-1 flex items-center relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            placeholder={`Search topic in ${topicDomain || "media"}...`}
-            className="w-full pl-8 pr-8 py-2 text-xs font-mono rounded-full border border-foreground/15 bg-background focus:outline-none"
-          />
-          {searchInput && (
-            <button type="button" onClick={clearQuery} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground p-1">
-              <X className="w-3 h-3" />
-            </button>
-          )}
-        </form>
-      </div>
+
 
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
