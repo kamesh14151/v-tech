@@ -15,6 +15,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Recipient email is required" }, { status: 400 });
   }
 
+  const hostHeader = req.headers.get("host") || "";
+  const protocol = req.headers.get("x-forwarded-proto") || "https";
+  const origin = hostHeader ? `${protocol}://${hostHeader}` : (req.nextUrl.origin || "https://optimus.ajstudioz.co.in");
+  const logoUrl = `${origin}/logo.jpeg`;
+
   const resendApiKey = process.env.RESEND_API_KEY || ["re_", "NwF1h5wf_", "BKtijAVeEwXrRBJXzBeryMTT"].join("");
   const emailSubject = subject || "Optimus Intelligence Morning Briefing";
   const formattedHtml = html && html.includes("<!DOCTYPE html>")
@@ -33,9 +38,18 @@ export async function POST(req: NextRequest) {
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
                         <td>
-                            <span style="display: inline-block; background-color: #000000; color: #ffffff; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; letter-spacing: 1px;">
-                                OPTIMUS INTELLIGENCE
-                            </span>
+                            <div style="display: inline-block; background-color: #000000; color: #ffffff; padding: 6px 12px; border-radius: 6px;">
+                              <table border="0" cellspacing="0" cellpadding="0" style="display: inline-table; vertical-align: middle;">
+                                <tr>
+                                  <td style="padding-right: 8px; vertical-align: middle;">
+                                    <img src="${logoUrl}" alt="Logo" width="20" height="20" style="display: block; width: 20px; height: 20px; border-radius: 4px; object-fit: cover; border: 0;" />
+                                  </td>
+                                  <td style="color: #ffffff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; vertical-align: middle;">
+                                    OPTIMUS INTELLIGENCE
+                                  </td>
+                                </tr>
+                              </table>
+                            </div>
                         </td>
                         <td align="right">
                             <span style="font-family: monospace; color: #71717a; font-size: 11px;">EXECUTIVE REPORT</span>

@@ -23,7 +23,7 @@ export interface MorningDigestEmailParams {
 }
 
 /**
- * Renders High-End Minimalist Monochrome HTML Email Template (White Background, Black & Gray Typography)
+ * Renders High-End Minimalist Monochrome HTML Email Template with Company Logo & Black/Gray Typography
  */
 export function buildMorningDigestHtml({
   recipientName,
@@ -41,6 +41,9 @@ export function buildMorningDigestHtml({
   const displayCompany = companyName || 'Optimus Enterprise';
   const briefingTitle = ruleName || `${searchQuery} Executive Briefing`;
   const summaryText = executiveSummary || `Over the ${recency}, our deterministic intelligence engine ingested and verified ${articles.length} news citations for ${searchQuery} in ${location}. Primary coverage highlights strategic market movements, narrative drivers, and regulatory updates across regional & global media feeds.`;
+
+  const origin = workspaceUrl.replace(/\/workspace\/?$/, '');
+  const logoUrl = `${origin}/logo.jpeg`;
 
   const articleItemsHtml = articles.map((art, idx) => `
     <div style="background-color: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 6px; padding: 14px 16px; margin-bottom: 12px;">
@@ -66,10 +69,19 @@ export function buildMorningDigestHtml({
 <body style="background-color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px 16px; color: #000000; -webkit-font-smoothing: antialiased;">
   <div style="max-width: 620px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 8px; overflow: hidden; padding: 0;">
     
-    <!-- Top Monocolor Header -->
+    <!-- Top Monocolor Header with Logo -->
     <div style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #E4E4E7;">
-      <div style="display: inline-block; background-color: #000000; color: #FFFFFF; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 12px; border-radius: 4px; margin-bottom: 16px;">
-        ${displayCompany.toUpperCase()} &bull; OPTIMUS AI
+      <div style="display: inline-block; background-color: #000000; color: #FFFFFF; padding: 6px 14px; border-radius: 6px; margin-bottom: 16px; text-align: center;">
+        <table border="0" cellspacing="0" cellpadding="0" style="display: inline-table; vertical-align: middle;">
+          <tr>
+            <td style="padding-right: 8px; vertical-align: middle;">
+              <img src="${logoUrl}" alt="Optimus Logo" width="20" height="20" style="display: block; width: 20px; height: 20px; border-radius: 4px; object-fit: cover; border: 0;" />
+            </td>
+            <td style="color: #FFFFFF; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; vertical-align: middle; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              ${displayCompany.toUpperCase()} &bull; OPTIMUS AI
+            </td>
+          </tr>
+        </table>
       </div>
       <h1 style="color: #000000; font-size: 24px; font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.5px; line-height: 1.3;">
         ${briefingTitle}
