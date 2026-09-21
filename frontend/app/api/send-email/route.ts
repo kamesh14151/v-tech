@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import nodemailer from "nodemailer";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -16,10 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Recipient email is required" }, { status: 400 });
   }
 
-  const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
   const resendApiKey = process.env.RESEND_API_KEY || ["re_", "NwF1h5wf_", "BKtijAVeEwXrRBJXzBeryMTT"].join("");
-
   const emailSubject = subject || "Optimus Intelligence Morning Briefing";
   const formattedHtml = html && html.includes("<!DOCTYPE html>")
     ? html
@@ -65,11 +61,17 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`;
 
-  try {
-    // 1. Resend API Integration if available
-    if (resendApiKey) {
+  const senderAddresses = [
+    "Optimus Intelligence <noreply@ajstudioz.co.in>",
+    "Optimus Intelligence <onboarding@resend.dev>",
+  ];
+
+  let lastError = "";
+
+  for (const sender of senderAddresses) {
+    try {
       const resendPayload: any = {
-        from: "Optimus Intelligence <digest@ajstudioz.co.in>",
+        from: sender,
         to: [targetEmail],
         subject: emailSubject,
         html: formattedHtml,
@@ -93,65 +95,35 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(resendPayload),
       });
 
-      if (res.ok) {
-        return NextResponse.json({ status: "sent", success: true, provider: "Resend", targetEmail });
-      }
-      const resendError = await res.text().catch(() => "");
-      console.error("Resend delivery failed:", res.status, resendError);
-    }
+      const resJson = await res.json().catch(() => ({}));
 
-    // 2. Nodemailer Gmail / SMTP Integration if credentials exist
-    if (gmailUser && gmailPass) {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: gmailUser,
-          pass: gmailPass,
-        },
-      });
-
-      const mailOptions: any = {
-        from: `"Optimus Intelligence" <${gmailUser}>`,
-        to: targetEmail,
-        subject: subject || "Optimus Intelligence Morning Briefing",
-        text: text || "Your Optimus intelligence dossier is ready.",
-        html: html || `<p>${text}</p>`,
-      };
-
-      if (docxBase64 && filename) {
-        mailOptions.attachments = [
-          {
-            filename: filename || "intelligence-report.docx",
-            content: Buffer.from(docxBase64, "base64"),
-            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          },
-        ];
+      if (res.ok && resJson.id) {
+        return NextResponse.json({
+          status: "sent",
+          success: true,
+          provider: "Resend",
+          sender,
+          emailId: resJson.id,
+          targetEmail,
+        });
       }
 
-      await transporter.sendMail(mailOptions);
-      return NextResponse.json({ status: "sent", success: true, provider: "Gmail SMTP", targetEmail });
+      if (resJson.message) {
+        lastError = resJson.message;
+      }
+    } catch (err: any) {
+      console.error("Resend API fetch error:", err);
+      lastError = err?.message || "Resend API error";
     }
+  }
 
-    // 3. No automated delivery provider configured. Return a compose URL without claiming delivery.
-    const encodedSubject = encodeURIComponent(subject || "Optimus Intelligence Morning Briefing");
-    const encodedBody = encodeURIComponent(text || "Optimus Intelligence Briefing Summary");
-    const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodedSubject}&body=${encodedBody}`;
-
-    return NextResponse.json({
-      status: "compose_required",
-      success: false,
-      provider: "Gmail Compose",
-      targetEmail,
-      gmailComposeUrl,
-      notice: "No automated email provider is configured. Open the Gmail compose link or configure RESEND_API_KEY/GMAIL_APP_PASSWORD for automatic delivery.",
-    });
-  } catch (error: any) {
-    console.error("Send email error:", error);
-    return NextResponse.json({
+  return NextResponse.json(
+    {
       status: "failed",
       success: false,
       targetEmail,
-      error: "Email delivery failed. Check the configured email provider and credentials.",
-    }, { status: 502 });
-  }
+      error: lastError || "Resend API delivery failed. Ensure RESEND_API_KEY environment variable is valid.",
+    },
+    { status: 502 }
+  );
 }

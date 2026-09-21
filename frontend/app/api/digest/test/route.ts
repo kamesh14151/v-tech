@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       ];
     }
 
-    // 3. Send email using Resend email service modeled after AJ-Chat
+    // 3. Send email exclusively via Resend API
     const recipientName = session.user.name || targetEmail.split("@")[0] || "Executive Leader";
     const result = await sendMorningDigestEmail({
       to: targetEmail,
@@ -93,27 +93,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         status: "sent",
         success: true,
+        provider: "Resend",
         emailId: result.id,
         targetEmail,
         articlesCount: articles.length,
       });
     }
 
-    // Fallback to Gmail compose window if direct API send failed
-    const emailSubject = `Lookout Complete: ${searchQuery} Executive Briefing`;
-    const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(`Optimus Intelligence Morning Briefing for ${searchQuery}:\n\n` + articles.map((a, i) => `${i+1}. ${a.title}\n${a.url}`).join("\n\n"))}`;
-
-    return NextResponse.json({
-      status: "fallback_gmail",
-      success: false,
-      gmailComposeUrl,
-      targetEmail,
-      error: result.error || "Resend API call failed on deployment",
-    });
+    return NextResponse.json(
+      {
+        status: "failed",
+        success: false,
+        targetEmail,
+        error: result.error || "Resend API delivery failed.",
+      },
+      { status: 502 }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to send test email" }, { status: 500 });
   }
 }
-
-
-

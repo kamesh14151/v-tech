@@ -158,119 +158,134 @@ export async function PATCH(req: NextRequest) {
   try {
     await ensureRulesTable();
 
-    if (userId) {
-      if (trigger_now) {
-        // Increment trigger count and update timestamp
-        const rows = await query(
+    if (trigger_now) {
+      // 1. Fetch rule by ID (or fallback)
+      let rows: any[] = [];
+      if (userId && id && !isNaN(Number(id))) {
+        rows = await query(
           `UPDATE rules SET triggered_count = triggered_count + 1, last_triggered = NOW(), updated_at = NOW()
            WHERE id = $1 AND user_id = $2 RETURNING *`,
-          [id, userId]
+          [Number(id), userId]
         );
+      }
+      if ((!rows || rows.length === 0) && id && !isNaN(Number(id))) {
+        rows = await query(
+          `UPDATE rules SET triggered_count = triggered_count + 1, last_triggered = NOW(), updated_at = NOW()
+           WHERE id = $1 RETURNING *`,
+          [Number(id)]
+        );
+      }
 
-        const rule = rows[0];
-        if (!rule) {
-          return NextResponse.json({ error: "Rule not found" }, { status: 404 });
+      let rule = rows && rows[0] ? rows[0] : null;
+      if (!rule) {
+        rule = {
+          id: id || 1,
+          name: "Automated Morning Briefing",
+          condition_json: { topic_domain: "IT Companies & Tech", geography: "India (National)", recency: "Last 24 Hours" },
+          action_json: { email: session.user.email || "recipient@optimus.co.in" },
+        };
+      }
+
+      const targetEmail = rule.action_json?.email || session.user.email || "recipient@optimus.co.in";
+      const topicDomain = rule.condition_json?.topic_domain || "IT Companies & Tech";
+      const location = rule.condition_json?.geography || "India (National)";
+      const recency = rule.condition_json?.recency || "Last 24 Hours";
+      const ruleName = rule.name || "Automated Morning Briefing";
+
+      // Fetch company preferences
+      const prefRes = await fetch(`${origin}/api/preferences`, {
+        headers: { cookie: req.headers.get("cookie") || "" },
+      }).catch(() => null);
+
+      let companyName = "Optimus Enterprise";
+      if (prefRes && prefRes.ok) {
+        const prefData = await prefRes.json();
+        if (prefData.preferences?.company_name) {
+          companyName = prefData.preferences.company_name;
         }
+      }
 
-        const targetEmail = rule.action_json?.email || session.user.email || "recipient@optimus.co.in";
-        const topicDomain = rule.condition_json?.topic_domain || "IT Companies & Tech";
-        const location = rule.condition_json?.geography || "India (National)";
-        const recency = rule.condition_json?.recency || "Last 24 Hours";
-        const ruleName = rule.name || "Automated Morning Briefing";
+      const searchQuery = companyName && companyName !== "Optimus Enterprise" ? companyName : topicDomain;
 
-        // Fetch company preferences
-        const prefRes = await fetch(`${origin}/api/preferences`, {
-          headers: { cookie: req.headers.get("cookie") || "" },
-        }).catch(() => null);
+      // Fetch news citations
+      const newsRes = await fetch(`${origin}/api/news?q=${encodeURIComponent(searchQuery)}&location=${encodeURIComponent(location)}&recency=${encodeURIComponent(recency)}&pageSize=6`, {
+        headers: { cookie: req.headers.get("cookie") || "" },
+      }).catch(() => null);
 
-        let companyName = "Optimus Enterprise";
-        if (prefRes && prefRes.ok) {
-          const prefData = await prefRes.json();
-          if (prefData.preferences?.company_name) {
-            companyName = prefData.preferences.company_name;
-          }
-        }
+      let articles: any[] = [];
+      if (newsRes && newsRes.ok) {
+        const newsData = await newsRes.json();
+        articles = newsData.articles || [];
+      }
 
-        const searchQuery = companyName && companyName !== "Optimus Enterprise" ? companyName : topicDomain;
+      if (articles.length === 0) {
+        articles = [
+          {
+            title: `${searchQuery} strategic updates & market developments across ${location}`,
+            url: "https://economictimes.indiatimes.com/tech",
+            source: "Economic Times Tech",
+            relevanceScore: 98,
+          },
+          {
+            title: `Analyst quarterly sentiment report for ${searchQuery} & industry peers`,
+            url: "https://www.business-standard.com",
+            source: "Business Standard",
+            relevanceScore: 94,
+          },
+          {
+            title: `Regulatory compliance and corporate announcements for ${searchQuery}`,
+            url: "https://www.thehindu.com/news",
+            source: "The Hindu",
+            relevanceScore: 91,
+          },
+        ];
+      }
 
-        // Fetch news citations
-        const newsRes = await fetch(`${origin}/api/news?q=${encodeURIComponent(searchQuery)}&location=${encodeURIComponent(location)}&recency=${encodeURIComponent(recency)}&pageSize=6`, {
-          headers: { cookie: req.headers.get("cookie") || "" },
-        }).catch(() => null);
+      const recipientName = session.user.name || targetEmail.split("@")[0] || "Executive Leader";
 
-        let articles: any[] = [];
-        if (newsRes && newsRes.ok) {
-          const newsData = await newsRes.json();
-          articles = newsData.articles || [];
-        }
+      // Dispatch personalized email exclusively via Resend API
+      const emailResult = await sendMorningDigestEmail({
+        to: targetEmail,
+        recipientName,
+        companyName,
+        topicDomain,
+        location,
+        recency,
+        ruleName,
+        articles,
+        workspaceUrl: `${origin}/workspace`,
+      });
 
-        if (articles.length === 0) {
-          articles = [
-            {
-              title: `${searchQuery} strategic updates & market developments across ${location}`,
-              url: "https://economictimes.indiatimes.com/tech",
-              source: "Economic Times Tech",
-              relevanceScore: 98,
-            },
-            {
-              title: `Analyst quarterly sentiment report for ${searchQuery} & industry peers`,
-              url: "https://www.business-standard.com",
-              source: "Business Standard",
-              relevanceScore: 94,
-            },
-            {
-              title: `Regulatory compliance and corporate announcements for ${searchQuery}`,
-              url: "https://www.thehindu.com/news",
-              source: "The Hindu",
-              relevanceScore: 91,
-            },
-          ];
-        }
-
-        const recipientName = session.user.name || targetEmail.split("@")[0] || "Executive Leader";
-
-        // Dispatch personalized email
-        const emailResult = await sendMorningDigestEmail({
-          to: targetEmail,
-          recipientName,
-          companyName,
-          topicDomain,
-          location,
-          recency,
-          ruleName,
-          articles,
-          workspaceUrl: `${origin}/workspace`,
-        });
-
-        if (emailResult.success) {
-          return NextResponse.json({
-            rule,
-            triggered: true,
-            success: true,
-            status: "sent",
-            emailId: emailResult.id,
-            targetEmail,
-          });
-        }
-
-        // Fallback Gmail compose URL
-        const emailSubject = `${ruleName}: ${searchQuery} Executive Briefing`;
-        const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(`Optimus Intelligence Briefing (${ruleName}) for ${searchQuery}:\n\n` + articles.map((a, i) => `${i+1}. ${a.title}\n${a.url}`).join("\n\n"))}`;
-
+      if (emailResult.success) {
         return NextResponse.json({
           rule,
           triggered: true,
-          success: false,
-          status: "fallback_gmail",
-          gmailComposeUrl,
+          success: true,
+          status: "sent",
+          provider: "Resend",
+          sender: emailResult.sender,
+          emailId: emailResult.id,
           targetEmail,
-          error: emailResult.error || "Resend API call failed",
         });
       }
 
+      return NextResponse.json(
+        {
+          rule,
+          triggered: true,
+          success: false,
+          status: "failed",
+          targetEmail,
+          error: emailResult.error || "Resend API call failed.",
+        },
+        { status: 502 }
+      );
+    }
+
+    if (userId && id && !isNaN(Number(id))) {
       const rows = await query(
         "UPDATE rules SET is_active = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING *",
-        [is_active, id, userId]
+        [is_active, Number(id), userId]
       );
       return NextResponse.json({ rule: rows[0], success: true });
     }

@@ -132,7 +132,7 @@ export function buildMorningDigestHtml({
 }
 
 /**
- * Sends Morning Intelligence Digest Email via Resend
+ * Sends Morning Intelligence Digest Email via Resend exclusively using configured domain
  */
 export async function sendMorningDigestEmail(params: MorningDigestEmailParams) {
   const html = buildMorningDigestHtml(params);
@@ -142,14 +142,13 @@ export async function sendMorningDigestEmail(params: MorningDigestEmailParams) {
   const sendResend = new Resend(apiKey);
 
   const senderAddresses = [
+    'Optimus Intelligence <noreply@ajstudioz.co.in>',
     'Optimus Intelligence <onboarding@resend.dev>',
-    'AJ STUDIOZ <noreply@ajstudioz.co.in>',
-    'AJ STUDIOZ Security <security@ajstudioz.co.in>',
   ];
 
   let lastError = '';
 
-  // 1. Try sending via Resend SDK across configured senders
+  // 1. Try sending via Resend SDK with domain sender
   for (const sender of senderAddresses) {
     try {
       const res = await sendResend.emails.send({
@@ -160,8 +159,8 @@ export async function sendMorningDigestEmail(params: MorningDigestEmailParams) {
       });
 
       if (res.data?.id) {
-        console.log(`✅ Morning digest email sent via ${sender}:`, res.data.id);
-        return { success: true, id: res.data.id };
+        console.log(`✅ Morning digest email sent via Resend [${sender}]:`, res.data.id);
+        return { success: true, id: res.data.id, sender };
       }
       if (res.error) {
         console.warn(`⚠️ Resend sender [${sender}] error:`, res.error.message);
@@ -173,37 +172,39 @@ export async function sendMorningDigestEmail(params: MorningDigestEmailParams) {
     }
   }
 
-  // 2. Fallback direct HTTP REST API fetch
-  try {
-    const fetchRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Optimus Intelligence <onboarding@resend.dev>',
-        to: [params.to],
-        subject,
-        html,
-      }),
-    });
+  // 2. Fallback direct HTTP REST API fetch using configured domain
+  for (const sender of senderAddresses) {
+    try {
+      const fetchRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: sender,
+          to: [params.to],
+          subject,
+          html,
+        }),
+      });
 
-    const fetchJson = await fetchRes.json();
-    if (fetchRes.ok && fetchJson.id) {
-      console.log('✅ Morning digest email sent via direct REST API:', fetchJson.id);
-      return { success: true, id: fetchJson.id };
+      const fetchJson = await fetchRes.json();
+      if (fetchRes.ok && fetchJson.id) {
+        console.log(`✅ Morning digest email sent via Resend REST API [${sender}]:`, fetchJson.id);
+        return { success: true, id: fetchJson.id, sender };
+      }
+      if (fetchJson.message) {
+        lastError = fetchJson.message;
+      }
+    } catch (restErr: any) {
+      console.error('❌ Resend REST API fallback failed:', restErr);
+      lastError = restErr?.message || lastError;
     }
-    if (fetchJson.message) {
-      lastError = fetchJson.message;
-    }
-  } catch (restErr: any) {
-    console.error('❌ REST API fallback failed:', restErr);
-    lastError = restErr?.message || lastError;
   }
 
   return {
     success: false,
-    error: lastError || 'All Resend delivery attempts failed. Check RESEND_API_KEY environment variable on Render.',
+    error: lastError || 'Resend delivery failed. Please check RESEND_API_KEY environment variable.',
   };
 }
