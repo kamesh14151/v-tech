@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Newspaper, Globe, RefreshCw, Filter, ArrowRight, ExternalLink, Clock, TrendingUp, AlertCircle, Loader2, Languages, ShieldAlert, MapPin } from "lucide-react";
+import { Newspaper, Globe, RefreshCw, Filter, ArrowRight, ExternalLink, Clock, TrendingUp, AlertCircle, Loader2, Languages, ShieldAlert, MapPin, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Article {
@@ -15,8 +15,11 @@ interface Article {
   thumbnail?: string;
   apiSource: "gdeltcloud" | "googlenews" | "newsapi" | "guardian";
   language?: string;
+  regionName?: string;
+  nativeLanguage?: string;
   languageBreakdown?: { language: string; count: number }[];
   topArticles?: { url: string; title: string; domain: string; domain_avatar_url?: string; rank?: number }[];
+  crossRegionalCoverage?: { language: string; regionName: string; nativeLanguage?: string; title: string; source: string; url: string }[];
   geo?: { country?: string; region?: string; continent?: string; location?: string };
   actors?: { name: string; country?: string; role?: string }[];
   metrics?: { significance?: number; severity_tier?: string; confidence?: number; article_count?: number };
@@ -28,15 +31,18 @@ interface Article {
 const FILTER_TYPES = ["All", "GDELT Cloud", "Google News", "NewsAPI", "Guardian", "High Relevance (90+)"];
 
 const LANGUAGES = [
-  { code: "all", name: "All Languages" },
-  { code: "en", name: "English (en)" },
-  { code: "ta", name: "Tamil (தமிழ்)" },
-  { code: "hi", name: "Hindi (हिन्दी)" },
-  { code: "es", name: "Spanish (es)" },
-  { code: "fr", name: "French (fr)" },
-  { code: "de", name: "German (de)" },
-  { code: "ar", name: "Arabic (ar)" },
-  { code: "zh", name: "Chinese (zh)" },
+  { code: "all", name: "All Regions & Languages" },
+  { code: "ta", name: "Tamil Nadu (தமிழ்)" },
+  { code: "kn", name: "Karnataka (ಕನ್ನಡ)" },
+  { code: "hi", name: "National Hindi (हिंदी)" },
+  { code: "te", name: "AP & Telangana (తెలుగు)" },
+  { code: "ml", name: "Kerala (മലയാളം)" },
+  { code: "en", name: "Global English" },
+  { code: "es", name: "Spanish (Español)" },
+  { code: "fr", name: "French (Français)" },
+  { code: "de", name: "German (Deutsch)" },
+  { code: "ar", name: "Arabic (العربية)" },
+  { code: "zh", name: "Chinese (中文)" },
 ];
 
 function timeAgo(dateStr: string): string {
@@ -122,7 +128,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
         <div>
           <h1 className="text-3xl font-display tracking-tight">News Collection Pipeline</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time multi-provider engine — GDELT Cloud API + Google News RSS + NewsAPI + The Guardian
+            Real-time cross-regional media engine — Tamil Nadu, Karnataka, National Hindi & Global feeds
           </p>
         </div>
 
@@ -150,10 +156,10 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
       {/* Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Live Articles", value: total.toString(), sub: "From GDELT + Google News + APIs" },
-          { label: "Data Providers", value: "4 Sources", sub: "GDELT, Google, NewsAPI, Guardian" },
+          { label: "Live Articles", value: total.toString(), sub: "From GDELT + Regional Google Feeds" },
+          { label: "Regional Media", value: `${new Set(articles.map(a => a.regionName).filter(Boolean)).size} Regions`, sub: "Tamil Nadu, Karnataka, National..." },
           { label: "High Relevance", value: articles.filter(a => a.relevanceScore >= 90).length.toString(), sub: "90+ Relevance Score" },
-          { label: "Multi-Language", value: `${new Set(articles.map(a => a.language).filter(Boolean)).size} Languages`, sub: "Global Language Breakdown" },
+          { label: "Multi-Language", value: `${new Set(articles.map(a => a.language).filter(Boolean)).size} Languages`, sub: "Tamil, Kannada, Hindi, English" },
         ].map((m, i) => (
           <div key={i} className="p-5 rounded-2xl border border-foreground/10 bg-background/80 backdrop-blur-xl">
             <div className="text-xs font-mono text-muted-foreground">{m.label}</div>
@@ -169,8 +175,8 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search topic (e.g. AI, PR, enterprise...)"
-          className="flex-1 px-4 py-2 text-xs font-mono rounded-full border border-foreground/10 bg-background/50 focus:bg-background focus:outline-none focus:border-foreground/30 transition-all"
+          placeholder="Search topic (e.g. Cinema, PayU, Vijay, IPL...)"
+          className="flex-1 px-4 py-2.5 text-xs font-mono rounded-full border border-foreground/10 bg-background/50 focus:bg-background focus:outline-none focus:border-foreground/30 transition-all"
           onKeyDown={(e) => e.key === "Enter" && fetchNews()}
         />
 
@@ -178,14 +184,14 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
           <select
             value={selectedLang}
             onChange={(e) => setSelectedLang(e.target.value)}
-            className="px-3 py-2 text-xs font-mono rounded-full border border-foreground/10 bg-background text-foreground focus:outline-none"
+            className="px-3.5 py-2.5 text-xs font-mono rounded-full border border-foreground/10 bg-background text-foreground focus:outline-none font-medium"
           >
             {LANGUAGES.map((l) => (
               <option key={l.code} value={l.code}>{l.name}</option>
             ))}
           </select>
 
-          <Button onClick={fetchNews} className="rounded-full text-xs font-mono bg-foreground text-background hover:bg-foreground/90">
+          <Button onClick={fetchNews} className="rounded-full text-xs font-mono bg-foreground text-background hover:bg-foreground/90 px-6">
             Search
           </Button>
         </div>
@@ -252,6 +258,14 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
                     <Clock className="w-3 h-3" /> {timeAgo(art.publishedAt)}
                   </span>
 
+                  {/* Regional State Language Badge */}
+                  {art.regionName && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                      <Globe className="w-2.5 h-2.5" />
+                      {art.regionName} {art.nativeLanguage ? `(${art.nativeLanguage})` : ""}
+                    </span>
+                  )}
+
                   {/* Provider Badge */}
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                     art.apiSource === "gdeltcloud"
@@ -264,20 +278,6 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
                   }`}>
                     {art.apiSource === "gdeltcloud" ? "GDELT Cloud" : art.apiSource === "googlenews" ? "Google News" : art.apiSource === "guardian" ? "The Guardian" : "NewsAPI"}
                   </span>
-
-                  {/* Language Badge */}
-                  {art.language && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-foreground/5 text-muted-foreground border border-foreground/10 uppercase">
-                      {art.language}
-                    </span>
-                  )}
-
-                  {/* Geo Tag if present */}
-                  {art.geo?.country && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-foreground/5 px-2 py-0.5 rounded">
-                      <MapPin className="w-2.5 h-2.5" /> {art.geo.country} {art.geo.location ? `(${art.geo.location})` : ""}
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-3 font-mono text-xs">
@@ -301,23 +301,36 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
                 <p className="text-sm text-muted-foreground line-clamp-3">{art.description}</p>
               )}
 
-              {/* Combinable Top Articles for GDELT Cloud Events */}
-              {art.topArticles && art.topArticles.length > 0 && (
-                <div className="mt-3 p-3 rounded-xl bg-foreground/5 border border-foreground/10 space-y-2">
-                  <div className="text-[11px] font-mono font-bold text-foreground flex items-center gap-1.5">
-                    <Globe className="w-3 h-3 text-amber-500" /> Multi-Source News Coverage ({art.topArticles.length} sources)
+              {/* Cross-Regional Media Coverage Section (Tamil Nadu, Karnataka, National Hindi, etc.) */}
+              {art.crossRegionalCoverage && art.crossRegionalCoverage.length > 0 && (
+                <div className="mt-3 p-3.5 rounded-xl bg-foreground/3 border border-foreground/10 space-y-2">
+                  <div className="text-[11px] font-mono font-bold text-foreground flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Languages className="w-3.5 h-3.5 text-blue-500" />
+                      Cross-Regional Coverage for this Topic (TN, Karnataka, National Media)
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      {art.crossRegionalCoverage.length} other regions reporting
+                    </span>
                   </div>
-                  <div className="space-y-1">
-                    {art.topArticles.slice(0, 3).map((ta, idx) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    {art.crossRegionalCoverage.map((crc, idx) => (
                       <a
                         key={idx}
-                        href={ta.url}
+                        href={crc.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between text-xs text-muted-foreground hover:text-foreground hover:underline py-0.5"
+                        className="p-2 rounded-lg bg-background border border-foreground/10 hover:border-blue-500/40 transition-all space-y-1 block group"
                       >
-                        <span className="truncate max-w-[80%]">• {ta.title}</span>
-                        <span className="font-mono text-[10px] text-muted-foreground/70">{ta.domain}</span>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                          <span className="font-bold text-foreground flex items-center gap-1">
+                            <MapPin className="w-2.5 h-2.5 text-emerald-500" /> {crc.regionName}
+                          </span>
+                          <span className="text-blue-500 font-semibold">{crc.source}</span>
+                        </div>
+                        <div className="text-xs font-sans text-foreground/90 group-hover:underline line-clamp-1">
+                          {crc.title}
+                        </div>
                       </a>
                     ))}
                   </div>
@@ -353,7 +366,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
           {filtered.length === 0 && !loading && !error && (
             <div className="text-center py-16 text-muted-foreground font-mono text-sm">
               <Globe className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              No articles found. Try a different search query or select All Languages.
+              No articles found. Try a different search query or select All Regions & Languages.
             </div>
           )}
         </div>
@@ -361,4 +374,5 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
     </div>
   );
 }
+
 

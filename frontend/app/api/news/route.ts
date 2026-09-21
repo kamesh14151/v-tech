@@ -78,15 +78,18 @@ function cleanXmlText(text: string): string {
     .trim();
 }
 
-const LANGUAGE_MAP: Record<string, { hl: string; gl: string; ceid: string }> = {
-  ta: { hl: "ta-IN", gl: "IN", ceid: "IN:ta" },
-  hi: { hl: "hi-IN", gl: "IN", ceid: "IN:hi" },
-  es: { hl: "es", gl: "ES", ceid: "ES:es" },
-  fr: { hl: "fr", gl: "FR", ceid: "FR:fr" },
-  de: { hl: "de", gl: "DE", ceid: "DE:de" },
-  ar: { hl: "ar", gl: "SA", ceid: "SA:ar" },
-  zh: { hl: "zh-CN", gl: "CN", ceid: "CN:zh-Hans" },
-  en: { hl: "en-US", gl: "US", ceid: "US:en" },
+const LANGUAGE_MAP: Record<string, { hl: string; gl: string; ceid: string; regionName: string; native: string }> = {
+  ta: { hl: "ta-IN", gl: "IN", ceid: "IN:ta", regionName: "Tamil Nadu (TN)", native: "தமிழ்" },
+  kn: { hl: "kn-IN", gl: "IN", ceid: "IN:kn", regionName: "Karnataka (KA)", native: "ಕನ್ನಡ" },
+  hi: { hl: "hi-IN", gl: "IN", ceid: "IN:hi", regionName: "National (Hindi)", native: "हिंदी" },
+  te: { hl: "te-IN", gl: "IN", ceid: "IN:te", regionName: "AP & Telangana", native: "తెలుగు" },
+  ml: { hl: "ml-IN", gl: "IN", ceid: "IN:ml", regionName: "Kerala (KL)", native: "മലയാളം" },
+  es: { hl: "es", gl: "ES", ceid: "ES:es", regionName: "Spain & LatAm", native: "Español" },
+  fr: { hl: "fr", gl: "FR", ceid: "FR:fr", regionName: "France & Global French", native: "Français" },
+  de: { hl: "de", gl: "DE", ceid: "DE:de", regionName: "Germany & EU", native: "Deutsch" },
+  ar: { hl: "ar", gl: "SA", ceid: "SA:ar", regionName: "Middle East", native: "العربية" },
+  zh: { hl: "zh-CN", gl: "CN", ceid: "CN:zh-Hans", regionName: "China & East Asia", native: "中文" },
+  en: { hl: "en-US", gl: "US", ceid: "US:en", regionName: "Global English", native: "English" },
 };
 
 export async function GET(req: NextRequest) {
@@ -150,14 +153,14 @@ export async function GET(req: NextRequest) {
       return res.json();
     }).catch(() => null);
 
-    // Build Google News RSS promises (multi-language support)
-    const rssLanguages = lang === "all" ? ["en", "ta", "hi", "es"] : [lang];
+    // Build Google News RSS promises (multi-language regional feeds)
+    const rssLanguages = lang === "all" ? ["en", "ta", "kn", "hi", "te", "ml", "es"] : [lang];
     const googleNewsPromises = rssLanguages.map(l => {
       const langConfig = LANGUAGE_MAP[l] || LANGUAGE_MAP.en;
       const gnewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(effectiveQuery)}&hl=${langConfig.hl}&gl=${langConfig.gl}&ceid=${langConfig.ceid}`;
       return fetch(gnewsUrl, { next: { revalidate: 120 } })
-        .then(async r => ({ lang: l, xml: await r.text() }))
-        .catch(() => ({ lang: l, xml: "" }));
+        .then(async r => ({ lang: l, config: langConfig, xml: await r.text() }))
+        .catch(() => ({ lang: l, config: langConfig, xml: "" }));
     });
 
     // Build NewsAPI & Guardian promises
@@ -194,6 +197,8 @@ export async function GET(req: NextRequest) {
         const summaryText = ev.summary || ev.event_description || `GDELT tracked event in ${ev.geo?.country || "global location"}`;
         const nlp = computeNLP(`${titleText} ${summaryText}`, searchTerms);
         const idHash = crypto.createHash("md5").update(targetUrl).digest("hex").slice(0, 12);
+        const topLang = ev.top_language || "en";
+        const langConfig = LANGUAGE_MAP[topLang] || LANGUAGE_MAP.en;
 
         articles.push({
           id: `gdelt-${ev.id || idHash}`,
@@ -205,7 +210,9 @@ export async function GET(req: NextRequest) {
           description: summaryText,
           thumbnail: topArt?.domain_avatar_url || null,
           apiSource: "gdeltcloud",
-          language: ev.top_language || "en",
+          language: topLang,
+          regionName: langConfig.regionName,
+          nativeLanguage: langConfig.native,
           languageBreakdown: ev.language_breakdown || [],
           topArticles: ev.top_articles || [],
           geo: ev.geo || null,
@@ -218,7 +225,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. Process Google News RSS multi-language feeds
+    // 2. Process Google News RSS multi-language regional feeds
     for (const item of gnewsResults) {
       if (!item.xml) continue;
       const rssItems = item.xml.split("<item>").slice(1);
@@ -237,6 +244,7 @@ export async function GET(req: NextRequest) {
         const publishedAt = dateMatch ? new Date(dateMatch[1]).toISOString() : new Date().toISOString();
         const nlp = computeNLP(title, searchTerms);
         const idHash = crypto.createHash("md5").update(link).digest("hex").slice(0, 12);
+        const langConfig = item.config || LANGUAGE_MAP[item.lang] || LANGUAGE_MAP.en;
 
         articles.push({
           id: `gnews-${idHash}`,
@@ -245,10 +253,12 @@ export async function GET(req: NextRequest) {
           source,
           author: source,
           publishedAt,
-          description: `Google News report on ${title}`,
+          description: `Regional news from ${langConfig.regionName} on ${title}`,
           thumbnail: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(source)}&sz=64`,
           apiSource: "googlenews",
           language: item.lang,
+          regionName: langConfig.regionName,
+          nativeLanguage: langConfig.native,
           relevanceScore: nlp.relevanceScore,
           sentimentScore: nlp.sentimentScore,
           sentiment: nlp.sentiment,
@@ -277,6 +287,8 @@ export async function GET(req: NextRequest) {
           thumbnail: a.urlToImage,
           apiSource: "newsapi",
           language: "en",
+          regionName: "Global English",
+          nativeLanguage: "English",
           relevanceScore: nlp.relevanceScore,
           sentimentScore: nlp.sentimentScore,
           sentiment: nlp.sentiment,
@@ -305,11 +317,41 @@ export async function GET(req: NextRequest) {
           thumbnail: a.fields?.thumbnail,
           apiSource: "guardian",
           language: "en",
+          regionName: "Global English",
+          nativeLanguage: "English",
           relevanceScore: nlp.relevanceScore,
           sentimentScore: nlp.sentimentScore,
           sentiment: nlp.sentiment,
         });
       }
+    }
+
+    // Group cross-regional coverage across languages (e.g. TN, KA, Hindi, AP)
+    const regionalBundles: Record<string, any[]> = {};
+    for (const art of articles) {
+      const l = art.language || "en";
+      if (!regionalBundles[l]) regionalBundles[l] = [];
+      regionalBundles[l].push(art);
+    }
+
+    // Attach cross-regional coverage links to articles
+    for (const art of articles) {
+      const otherLangs = Object.keys(regionalBundles).filter(l => l !== art.language);
+      const crossCoverage: any[] = [];
+      for (const ol of otherLangs) {
+        const sample = regionalBundles[ol]?.[0];
+        if (sample) {
+          crossCoverage.push({
+            language: ol,
+            regionName: sample.regionName,
+            nativeLanguage: sample.nativeLanguage,
+            title: sample.title,
+            source: sample.source,
+            url: sample.url,
+          });
+        }
+      }
+      art.crossRegionalCoverage = crossCoverage.slice(0, 4);
     }
 
     // Filter by requested source if applicable
@@ -322,7 +364,7 @@ export async function GET(req: NextRequest) {
     finalArticles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
     return NextResponse.json({
-      articles: finalArticles.slice(0, pageSize * 2),
+      articles: finalArticles.slice(0, pageSize * 2.5),
       total: finalArticles.length,
       query: baseTerm,
       effectiveQuery,
@@ -330,6 +372,11 @@ export async function GET(req: NextRequest) {
       location: location || "Global (All)",
       language: lang,
       recency,
+      regionalBreakdown: Object.keys(regionalBundles).map(l => ({
+        language: l,
+        regionName: LANGUAGE_MAP[l]?.regionName || l,
+        count: regionalBundles[l].length,
+      })),
       providers: ["gdeltcloud", "googlenews", "newsapi", "guardian"],
     });
   } catch (error: any) {
