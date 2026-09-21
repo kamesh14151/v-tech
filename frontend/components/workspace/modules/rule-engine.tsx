@@ -89,7 +89,31 @@ export function RuleEngineView() {
 
   useEffect(() => {
     fetchRules();
-  }, [fetchRules]);
+
+    // Background cron dispatch runner to check and trigger due rules automatically
+    const checkScheduledDispatches = async () => {
+      try {
+        const res = await fetch("/api/cron/dispatch-rules", { method: "POST" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.dispatchedCount > 0) {
+            setTriggeredSuccess(
+              `Automated Digest Triggered! ${data.dispatchedCount} scheduled briefing(s) automatically sent to ${userEmail} via Resend.`
+            );
+            fetchRules();
+            setTimeout(() => setTriggeredSuccess(null), 8000);
+          }
+        }
+      } catch (e) {
+        console.error("Cron check error:", e);
+      }
+    };
+
+    // Check immediately on load and poll every 30 seconds
+    checkScheduledDispatches();
+    const interval = setInterval(checkScheduledDispatches, 30000);
+    return () => clearInterval(interval);
+  }, [fetchRules, userEmail]);
 
   const handleOpenCreate = () => {
     setEditingRule(null);
@@ -130,10 +154,18 @@ export function RuleEngineView() {
       else if (sched.includes("08:00 AM") || sched.includes("8:00 AM")) setScheduleTime("08:00 AM IST");
       else if (sched.includes("09:00 AM")) setScheduleTime("09:00 AM IST");
       else if (sched.includes("10:00 AM")) setScheduleTime("10:00 AM IST");
+      else if (sched.includes("11:00 AM")) setScheduleTime("11:00 AM IST");
       else if (sched.includes("12:00 PM")) setScheduleTime("12:00 PM IST");
+      else if (sched.includes("01:00 PM")) setScheduleTime("01:00 PM IST");
+      else if (sched.includes("02:00 PM")) setScheduleTime("02:00 PM IST");
+      else if (sched.includes("03:00 PM") || sched.includes("3:00 PM") || sched.includes("15:00")) setScheduleTime("03:00 PM IST");
+      else if (sched.includes("04:00 PM")) setScheduleTime("04:00 PM IST");
       else if (sched.includes("05:00 PM")) setScheduleTime("05:00 PM IST");
       else if (sched.includes("06:00 PM")) setScheduleTime("06:00 PM IST");
+      else if (sched.includes("07:00 PM")) setScheduleTime("07:00 PM IST");
       else if (sched.includes("08:00 PM")) setScheduleTime("08:00 PM IST");
+      else if (sched.includes("09:00 PM")) setScheduleTime("09:00 PM IST");
+      else if (sched.includes("10:00 PM")) setScheduleTime("10:00 PM IST");
       else if (sched.includes("at ")) {
         const customPart = sched.split("at ")[1]?.replace(" IST", "").trim();
         if (customPart) {
@@ -565,10 +597,18 @@ export function RuleEngineView() {
                         <option value="08:00 AM IST">08:00 AM IST (Standard)</option>
                         <option value="09:00 AM IST">09:00 AM IST (Workday Start)</option>
                         <option value="10:00 AM IST">10:00 AM IST (Late Morning)</option>
+                        <option value="11:00 AM IST">11:00 AM IST (Pre-noon)</option>
                         <option value="12:00 PM IST">12:00 PM IST (Midday Digest)</option>
+                        <option value="01:00 PM IST">01:00 PM IST (Early Afternoon)</option>
+                        <option value="02:00 PM IST">02:00 PM IST (Mid Afternoon)</option>
+                        <option value="03:00 PM IST">03:00 PM IST (Afternoon Briefing)</option>
+                        <option value="04:00 PM IST">04:00 PM IST (Late Afternoon)</option>
                         <option value="05:00 PM IST">05:00 PM IST (Evening Briefing)</option>
                         <option value="06:00 PM IST">06:00 PM IST (Evening Summary)</option>
+                        <option value="07:00 PM IST">07:00 PM IST (Prime Summary)</option>
                         <option value="08:00 PM IST">08:00 PM IST (Nightly Recap)</option>
+                        <option value="09:00 PM IST">09:00 PM IST (Late Recap)</option>
+                        <option value="10:00 PM IST">10:00 PM IST (Night Digest)</option>
                         <option value="Custom">Custom Time...</option>
                       </select>
                     </div>
