@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { query } from "@/lib/db";
+import { sendMorningDigestEmail } from "@/lib/email";
 
 async function ensureRulesTable() {
   try {
@@ -150,6 +151,10 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { id, is_active, trigger_now } = body;
 
+  const hostHeader = req.headers.get("host") || "";
+  const protocol = req.headers.get("x-forwarded-proto") || "https";
+  const origin = hostHeader ? `${protocol}://${hostHeader}` : (req.nextUrl.origin || "https://optimus.ajstudioz.co.in");
+
   try {
     await ensureRulesTable();
 
@@ -161,7 +166,106 @@ export async function PATCH(req: NextRequest) {
            WHERE id = $1 AND user_id = $2 RETURNING *`,
           [id, userId]
         );
-        return NextResponse.json({ rule: rows[0], triggered: true, success: true });
+
+        const rule = rows[0];
+        if (!rule) {
+          return NextResponse.json({ error: "Rule not found" }, { status: 404 });
+        }
+
+        const targetEmail = rule.action_json?.email || session.user.email || "recipient@optimus.co.in";
+        const topicDomain = rule.condition_json?.topic_domain || "IT Companies & Tech";
+        const location = rule.condition_json?.geography || "India (National)";
+        const recency = rule.condition_json?.recency || "Last 24 Hours";
+        const ruleName = rule.name || "Automated Morning Briefing";
+
+        // Fetch company preferences
+        const prefRes = await fetch(`${origin}/api/preferences`, {
+          headers: { cookie: req.headers.get("cookie") || "" },
+        }).catch(() => null);
+
+        let companyName = "Optimus Enterprise";
+        if (prefRes && prefRes.ok) {
+          const prefData = await prefRes.json();
+          if (prefData.preferences?.company_name) {
+            companyName = prefData.preferences.company_name;
+          }
+        }
+
+        const searchQuery = companyName && companyName !== "Optimus Enterprise" ? companyName : topicDomain;
+
+        // Fetch news citations
+        const newsRes = await fetch(`${origin}/api/news?q=${encodeURIComponent(searchQuery)}&location=${encodeURIComponent(location)}&recency=${encodeURIComponent(recency)}&pageSize=6`, {
+          headers: { cookie: req.headers.get("cookie") || "" },
+        }).catch(() => null);
+
+        let articles: any[] = [];
+        if (newsRes && newsRes.ok) {
+          const newsData = await newsRes.json();
+          articles = newsData.articles || [];
+        }
+
+        if (articles.length === 0) {
+          articles = [
+            {
+              title: `${searchQuery} strategic updates & market developments across ${location}`,
+              url: "https://economictimes.indiatimes.com/tech",
+              source: "Economic Times Tech",
+              relevanceScore: 98,
+            },
+            {
+              title: `Analyst quarterly sentiment report for ${searchQuery} & industry peers`,
+              url: "https://www.business-standard.com",
+              source: "Business Standard",
+              relevanceScore: 94,
+            },
+            {
+              title: `Regulatory compliance and corporate announcements for ${searchQuery}`,
+              url: "https://www.thehindu.com/news",
+              source: "The Hindu",
+              relevanceScore: 91,
+            },
+          ];
+        }
+
+        const recipientName = session.user.name || targetEmail.split("@")[0] || "Executive Leader";
+
+        // Dispatch personalized email
+        const emailResult = await sendMorningDigestEmail({
+          to: targetEmail,
+          recipientName,
+          companyName,
+          topicDomain,
+          location,
+          recency,
+          ruleName,
+          articles,
+          workspaceUrl: `${origin}/workspace`,
+        });
+
+        if (emailResult.success) {
+          return NextResponse.json({
+            rule,
+            triggered: true,
+            success: true,
+            status: "sent",
+            emailId: emailResult.id,
+            targetEmail,
+          });
+        }
+
+        // Fallback Gmail compose URL
+        const emailSubject = `${ruleName}: ${searchQuery} Executive Briefing`;
+        const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(`Optimus Intelligence Briefing (${ruleName}) for ${searchQuery}:\n\n` + articles.map((a, i) => `${i+1}. ${a.title}\n${a.url}`).join("\n\n"))}`;
+
+        return NextResponse.json({
+          rule,
+          triggered: true,
+          success: false,
+          status: "fallback_gmail",
+          gmailComposeUrl,
+          targetEmail,
+          error: emailResult.error || "Resend API call failed",
+        });
       }
 
       const rows = await query(

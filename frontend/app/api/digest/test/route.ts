@@ -77,8 +77,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Send email using Resend email service modeled after AJ-Chat
+    const recipientName = session.user.name || targetEmail.split("@")[0] || "Executive Leader";
     const result = await sendMorningDigestEmail({
       to: targetEmail,
+      recipientName,
       companyName,
       topicDomain,
       location,

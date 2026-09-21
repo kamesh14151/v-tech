@@ -136,9 +136,23 @@ export function RuleEngineView() {
         body: JSON.stringify({ id: rule.id, trigger_now: true }),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.status === "sent") {
         setTriggeredSuccess(
-          `Morning Briefing & Word Document (.docx) dispatched to ${rule.targetEmail}!`
+          `Morning Intelligence Briefing with clickable story links dispatched directly to ${data.targetEmail || rule.targetEmail}!`
+        );
+        fetchRules();
+        setTimeout(() => setTriggeredSuccess(null), 6000);
+      } else if (data.gmailComposeUrl) {
+        window.open(data.gmailComposeUrl, "_blank");
+        setTriggeredSuccess(
+          `Opened Gmail compose tab with pre-filled briefing for ${data.targetEmail || rule.targetEmail}.`
+        );
+        fetchRules();
+        setTimeout(() => setTriggeredSuccess(null), 6000);
+      } else if (res.ok) {
+        setTriggeredSuccess(
+          `Rule executed & dispatched to ${rule.targetEmail}!`
         );
         fetchRules();
         setTimeout(() => setTriggeredSuccess(null), 5000);
