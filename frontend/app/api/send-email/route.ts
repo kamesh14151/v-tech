@@ -26,34 +26,34 @@ export async function POST(req: NextRequest) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${emailSubject}</title>
 </head>
-<body style="margin: 0; padding: 24px; background-color: #09090b; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 680px; margin: 0 auto; background-color: #121215; border: 1px solid #27272a; border-radius: 12px; overflow: hidden;">
+<body style="margin: 0; padding: 24px; background-color: #ffffff; color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e4e4e7; border-radius: 8px; overflow: hidden;">
         <tr>
-            <td style="padding: 24px 32px; border-bottom: 1px solid #27272a; background-color: #121215;">
+            <td style="padding: 24px 32px; border-bottom: 1px solid #e4e4e7; background-color: #ffffff;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
                         <td>
-                            <span style="display: inline-block; background-color: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 9999px; letter-spacing: 0.5px;">
+                            <span style="display: inline-block; background-color: #000000; color: #ffffff; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 4px 10px; border-radius: 4px; letter-spacing: 1px;">
                                 OPTIMUS INTELLIGENCE
                             </span>
                         </td>
                         <td align="right">
-                            <span style="font-family: monospace; color: #71717a; font-size: 12px;">SYSTEM REPORT</span>
+                            <span style="font-family: monospace; color: #71717a; font-size: 11px;">EXECUTIVE REPORT</span>
                         </td>
                     </tr>
                 </table>
             </td>
         </tr>
         <tr>
-            <td style="padding: 32px; color: #e4e4e7; font-size: 14px; line-height: 1.6;">
-                <h1 style="color: #ffffff; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; letter-spacing: -0.3px;">${emailSubject}</h1>
-                ${html || `<div style="white-space: pre-wrap; font-family: sans-serif; color: #d4d4d8;">${text || ""}</div>`}
+            <td style="padding: 32px; color: #18181b; font-size: 14px; line-height: 1.6;">
+                <h1 style="color: #000000; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; letter-spacing: -0.3px;">${emailSubject}</h1>
+                ${html || `<div style="white-space: pre-wrap; font-family: sans-serif; color: #27272a;">${text || ""}</div>`}
             </td>
         </tr>
         <tr>
-            <td style="padding: 20px 32px; background-color: #09090b; border-top: 1px solid #27272a; text-align: center;">
+            <td style="padding: 20px 32px; background-color: #ffffff; border-top: 1px solid #e4e4e7; text-align: center;">
                 <p style="color: #71717a; font-size: 11px; font-family: monospace; margin: 0;">
-                    // AUTOMATED INTELLIGENCE DISPATCH &bull; AJSTUDIOZ.CO.IN
+                    AUTOMATED INTELLIGENCE DISPATCH &bull; OPTIMUS PLATFORM
                 </p>
             </td>
         </tr>

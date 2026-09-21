@@ -23,7 +23,7 @@ export interface MorningDigestEmailParams {
 }
 
 /**
- * Renders HTML Email Template modeled after AJ-Chat Lookout Completed Email with Personalized Greetings
+ * Renders High-End Minimalist Monochrome HTML Email Template (White Background, Black & Gray Typography)
  */
 export function buildMorningDigestHtml({
   recipientName,
@@ -43,13 +43,13 @@ export function buildMorningDigestHtml({
   const summaryText = executiveSummary || `Over the ${recency}, our deterministic intelligence engine ingested and verified ${articles.length} news citations for ${searchQuery} in ${location}. Primary coverage highlights strategic market movements, narrative drivers, and regulatory updates across regional & global media feeds.`;
 
   const articleItemsHtml = articles.map((art, idx) => `
-    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px;">
-      <a href="${art.url}" target="_blank" rel="noopener noreferrer" style="color: #0284C7; font-size: 15px; font-weight: 600; text-decoration: underline; line-height: 1.4; display: block; margin-bottom: 6px;">
+    <div style="background-color: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 6px; padding: 14px 16px; margin-bottom: 12px;">
+      <a href="${art.url}" target="_blank" rel="noopener noreferrer" style="color: #000000; font-size: 15px; font-weight: 600; text-decoration: underline; line-height: 1.4; display: block; margin-bottom: 8px;">
         [${idx + 1}] ${art.title} &rarr;
       </a>
-      <div style="font-size: 12px; color: #64748B; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; align-items: center; justify-content: space-between;">
-        <span>Source: <a href="${art.url}" target="_blank" rel="noopener noreferrer" style="color: #0284C7; text-decoration: underline; font-weight: 600;">${art.source}</a></span>
-        <span style="background-color: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; padding: 2px 8px; border-radius: 9999px; font-weight: 600; font-size: 11px;">
+      <div style="font-size: 12px; color: #71717A; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; align-items: center; justify-content: space-between;">
+        <span>Source: <a href="${art.url}" target="_blank" rel="noopener noreferrer" style="color: #27272A; text-decoration: underline; font-weight: 600;">${art.source}</a></span>
+        <span style="background-color: #F4F4F5; color: #18181B; border: 1px solid #E4E4E7; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px;">
           Match: ${art.relevanceScore || 95}%
         </span>
       </div>
@@ -63,66 +63,66 @@ export function buildMorningDigestHtml({
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${briefingTitle}</title>
 </head>
-<body style="background-color: #F1F5F9; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px 16px; color: #1E293B;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+<body style="background-color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 32px 16px; color: #000000; -webkit-font-smoothing: antialiased;">
+  <div style="max-width: 620px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 8px; overflow: hidden; padding: 0;">
     
-    <!-- Header -->
-    <div style="padding: 28px 32px 20px 32px; text-align: center; border-bottom: 1px solid #F1F5F9;">
-      <div style="display: inline-block; background-color: #0F172A; color: #FFFFFF; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 6px 16px; border-radius: 9999px; margin-bottom: 12px;">
+    <!-- Top Monocolor Header -->
+    <div style="padding: 32px 32px 24px 32px; border-bottom: 1px solid #E4E4E7;">
+      <div style="display: inline-block; background-color: #000000; color: #FFFFFF; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 12px; border-radius: 4px; margin-bottom: 16px;">
         ${displayCompany.toUpperCase()} &bull; OPTIMUS AI
       </div>
-      <h1 style="color: #0F172A; font-size: 22px; font-weight: 700; margin: 0 0 6px 0; letter-spacing: -0.5px;">
+      <h1 style="color: #000000; font-size: 24px; font-weight: 700; margin: 0 0 8px 0; letter-spacing: -0.5px; line-height: 1.3;">
         ${briefingTitle}
       </h1>
-      <div style="display: inline-block; background-color: #F8FAFC; border: 1px solid #E2E8F0; color: #475569; font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, monospace;">
-        ${searchQuery} (${location})
+      <div style="display: inline-block; background-color: #F4F4F5; border: 1px solid #E4E4E7; color: #52525B; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">
+        ${searchQuery} &bull; ${location}
       </div>
     </div>
 
     <!-- Personalized Greeting -->
-    <div style="padding: 24px 32px 16px 32px; border-bottom: 1px solid #F8FAFC;">
-      <h2 style="color: #0F172A; font-size: 18px; font-weight: 700; margin: 0 0 6px 0;">
-        Good Morning, ${greetingName}! 👋
+    <div style="padding: 24px 32px; border-bottom: 1px solid #F4F4F5;">
+      <h2 style="color: #000000; font-size: 17px; font-weight: 700; margin: 0 0 6px 0;">
+        Good Morning, ${greetingName}
       </h2>
-      <p style="color: #475569; font-size: 14px; margin: 0; line-height: 1.6;">
-        Here is your personalized intelligence briefing prepared for <strong>${displayCompany}</strong>, monitoring active media developments across <strong>${topicDomain}</strong> (${location}).
+      <p style="color: #52525B; font-size: 14px; margin: 0; line-height: 1.6;">
+        Here is your automated executive briefing prepared for <strong>${displayCompany}</strong>, monitoring active media developments across <strong>${topicDomain}</strong> (${location}).
       </p>
     </div>
 
-    <!-- Executive Summary Section -->
-    <div style="padding: 20px 32px 24px 32px; border-bottom: 1px solid #F1F5F9;">
-      <div style="background-color: #F0FDF4; border-left: 4px solid #16A34A; border-radius: 0 8px 8px 0; padding: 16px 20px;">
-        <h3 style="color: #15803D; font-size: 13px; font-weight: 700; text-transform: uppercase; margin: 0 0 6px 0; letter-spacing: 0.5px;">
-          Executive Overview (${recency})
+    <!-- Executive Overview Block -->
+    <div style="padding: 24px 32px; border-bottom: 1px solid #E4E4E7;">
+      <div style="background-color: #FAFAFA; border-left: 3px solid #000000; border-radius: 0 6px 6px 0; padding: 18px 20px;">
+        <h3 style="color: #000000; font-size: 11px; font-weight: 700; text-transform: uppercase; margin: 0 0 8px 0; letter-spacing: 1px; font-family: ui-monospace, SFMono-Regular, monospace;">
+          EXECUTIVE OVERVIEW (${recency.toUpperCase()})
         </h3>
-        <p style="color: #334155; font-size: 14px; line-height: 1.6; margin: 0;">
+        <p style="color: #27272A; font-size: 14px; line-height: 1.6; margin: 0;">
           ${summaryText}
         </p>
       </div>
     </div>
 
-    <!-- Verified Story Citations (Hyperlinks) -->
+    <!-- Verified Story Citations (Pure Black & Gray Monochrome Links) -->
     <div style="padding: 24px 32px;">
-      <h2 style="color: #0F172A; font-size: 16px; font-weight: 700; margin: 0 0 16px 0;">
+      <h2 style="color: #000000; font-size: 15px; font-weight: 700; margin: 0 0 16px 0; letter-spacing: -0.2px;">
         Verified Source Citations (${articles.length} Ingested Stories)
       </h2>
       ${articleItemsHtml}
     </div>
 
-    <!-- Action Button -->
-    <div style="padding: 16px 32px 32px 32px; text-align: center;">
-      <a href="${workspaceUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #0F172A; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-        Open Full Interactive Intelligence Dossier &rarr;
+    <!-- Action Button (Solid Black Minimalist Button) -->
+    <div style="padding: 8px 32px 32px 32px; text-align: center;">
+      <a href="${workspaceUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #000000; color: #FFFFFF; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 6px; letter-spacing: 0.2px;">
+        Open Interactive Intelligence Dossier &rarr;
       </a>
     </div>
 
-    <!-- Footer -->
-    <div style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 20px 32px; text-align: center;">
-      <p style="color: #64748B; font-size: 12px; margin: 0 0 4px 0; font-family: ui-monospace, SFMono-Regular, monospace;">
-        Automated Intelligence Engine &bull; AJ STUDIOZ
+    <!-- Monochrome Footer -->
+    <div style="background-color: #FFFFFF; border-top: 1px solid #E4E4E7; padding: 20px 32px; text-align: center;">
+      <p style="color: #71717A; font-size: 11px; margin: 0 0 4px 0; font-family: ui-monospace, SFMono-Regular, monospace;">
+        AUTOMATED INTELLIGENCE ENGINE &bull; OPTIMUS PLATFORM
       </p>
-      <p style="color: #94A3B8; font-size: 11px; margin: 0;">
-        Sent to verified recipient &bull; <a href="${workspaceUrl}" style="color: #0284C7; text-decoration: underline;">optimus.ajstudioz.co.in</a>
+      <p style="color: #A1A1AA; font-size: 11px; margin: 0;">
+        Sent to verified recipient &bull; <a href="${workspaceUrl}" style="color: #000000; text-decoration: underline;">optimus.ajstudioz.co.in</a>
       </p>
     </div>
 
