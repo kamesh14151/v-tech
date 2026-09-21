@@ -3,6 +3,7 @@ import {
   Packer,
   Paragraph,
   TextRun,
+  ExternalHyperlink,
   HeadingLevel,
   Table,
   TableRow,
@@ -360,7 +361,7 @@ export async function generateWordDocx(data: ReportExportData): Promise<Blob> {
                 (story) =>
                   new TableRow({
                     children: [
-                      createBodyCell(story.title, CITE_COL1_WIDTH),
+                      createLinkBodyCell(story.title, story.url, CITE_COL1_WIDTH),
                       createBodyCell(story.source, CITE_COL2_WIDTH),
                       createBodyCell(`${story.relevanceScore}/100`, CITE_COL3_WIDTH, true),
                     ],
@@ -369,11 +370,31 @@ export async function generateWordDocx(data: ReportExportData): Promise<Blob> {
             ],
           }),
 
-          // Footer Notice
+          // Footer Notice with Hyperlink
           new Paragraph({
             children: [
               new TextRun({
-                text: "\n\nReport autonomously synthesized by Optimus Intelligence Platform · Powered by Optimus AI Engine",
+                text: "\n\nReport autonomously synthesized by ",
+                italics: true,
+                size: 18,
+                color: "9CA3AF",
+                font: "Calibri",
+              }),
+              new ExternalHyperlink({
+                children: [
+                  new TextRun({
+                    text: "Optimus Intelligence Platform",
+                    italics: true,
+                    size: 18,
+                    color: "0284C7",
+                    font: "Calibri",
+                    style: "Hyperlink",
+                  }),
+                ],
+                link: "https://optimus.ajstudioz.co.in/workspace",
+              }),
+              new TextRun({
+                text: " · Powered by Optimus AI Engine",
                 italics: true,
                 size: 18,
                 color: "9CA3AF",
@@ -468,6 +489,44 @@ function createBodyCell(text: string, widthDxa: number, isCenter = false): Table
             color: "1F2937",
           }),
         ],
+      }),
+    ],
+  });
+}
+
+function createLinkBodyCell(text: string, url: string, widthDxa: number): TableCell {
+  const hasValidUrl = typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"));
+  const children = hasValidUrl
+    ? [
+        new ExternalHyperlink({
+          children: [
+            new TextRun({
+              text: text,
+              size: 20,
+              font: "Calibri",
+              color: "0284C7",
+              style: "Hyperlink",
+            }),
+          ],
+          link: url,
+        }),
+      ]
+    : [
+        new TextRun({
+          text: text,
+          size: 20,
+          font: "Calibri",
+          color: "1F2937",
+        }),
+      ];
+
+  return new TableCell({
+    width: { size: widthDxa, type: WidthType.DXA },
+    margins: CELL_MARGINS,
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.LEFT,
+        children,
       }),
     ],
   });

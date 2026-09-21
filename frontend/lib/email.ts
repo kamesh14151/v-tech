@@ -37,11 +37,11 @@ export function buildMorningDigestHtml({
 
   const articleItemsHtml = articles.map((art, idx) => `
     <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px;">
-      <a href="${art.url}" target="_blank" style="color: #0284C7; font-size: 15px; font-weight: 600; text-decoration: none; line-height: 1.4; display: block; margin-bottom: 6px;">
+      <a href="${art.url}" target="_blank" rel="noopener noreferrer" style="color: #0284C7; font-size: 15px; font-weight: 600; text-decoration: underline; line-height: 1.4; display: block; margin-bottom: 6px;">
         [${idx + 1}] ${art.title} &rarr;
       </a>
       <div style="font-size: 12px; color: #64748B; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: flex; align-items: center; justify-content: space-between;">
-        <span>Source: <strong style="color: #334155;">${art.source}</strong></span>
+        <span>Source: <a href="${art.url}" target="_blank" rel="noopener noreferrer" style="color: #0284C7; text-decoration: underline; font-weight: 600;">${art.source}</a></span>
         <span style="background-color: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; padding: 2px 8px; border-radius: 9999px; font-weight: 600; font-size: 11px;">
           Match: ${art.relevanceScore || 95}%
         </span>
