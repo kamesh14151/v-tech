@@ -45,8 +45,11 @@ interface AnalysisResult {
   agent_trace?: Array<{ agent: string; status: string; duration_ms?: number; items_out?: number; error?: string }>;
 }
 
-function timeAgo(d: string) {
-  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+function timeAgo(d?: string) {
+  if (!d) return "Recently";
+  const parsed = new Date(d).getTime();
+  if (isNaN(parsed)) return "Recently";
+  const m = Math.max(0, Math.floor((Date.now() - parsed) / 60000));
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
