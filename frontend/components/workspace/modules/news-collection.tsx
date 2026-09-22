@@ -175,7 +175,7 @@ export function NewsCollectionView({ onNavigate }: { onNavigate: (mod: any) => v
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search topic (e.g. Cinema, PayU, Vijay, IPL...)"
+          placeholder="Search topic (e.g. Vee Tech, Sona College, PayU, IPL...)"
           className="flex-1 px-4 py-2.5 text-xs font-mono rounded-full border border-foreground/10 bg-background/50 focus:bg-background focus:outline-none focus:border-foreground/30 transition-all"
           onKeyDown={(e) => e.key === "Enter" && fetchNews()}
         />

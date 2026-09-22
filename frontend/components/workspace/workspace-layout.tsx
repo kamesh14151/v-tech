@@ -663,8 +663,9 @@ export function WorkspaceLayout({
               </label>
               <div className="flex flex-wrap gap-2">
                 {[
+                  { label: "⚡ Vee Tech", domain: "Vee Tech & Enterprise", topic: "vee tech" },
+                  { label: "🎓 Sona College", domain: "Sona College of Technology", topic: "sona college" },
                   { label: "🤖 Google Gemini", domain: "IT Companies & Tech", topic: "google gemini" },
-                  { label: "🎬 Vijay / Tamil Cinema", domain: "Cinema & Entertainment", topic: "vijay" },
                   { label: "💳 PayU Fintech", domain: "Fintech & Banking", topic: "PayU" },
                   { label: "🏏 IPL Auction 2026", domain: "Cricket & Sports", topic: "IPL auction 2026" },
                   { label: "💻 IT Sector Growth", domain: "IT Companies & Tech", topic: "IT companies growth" },

@@ -5,7 +5,7 @@ import { useSession, signIn } from "next-auth/react";
 import {
   Sliders, Globe, ShieldCheck, Check, Loader2, Sparkles,
   Building2, Save, Trophy, Cpu, Landmark, Car, Film, Stethoscope,
-  Clock, CheckCircle2, AlertCircle, Mail, Send
+  Clock, CheckCircle2, AlertCircle, Mail, Send, GraduationCap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -35,10 +35,10 @@ const TOPIC_DOMAIN_PRESETS = [
     color: "text-purple-500",
   },
   {
-    name: "Cinema & Entertainment",
-    desc: "Kollywood, Bollywood, OTT releases, box office revenue, and studio acquisitions",
-    icon: Film,
-    color: "text-pink-500",
+    name: "Vee Tech & Sona College",
+    desc: "Vee Tech, Sona College of Technology, educational innovations, campus tech, and engineering developments",
+    icon: GraduationCap,
+    color: "text-indigo-500",
   },
   {
     name: "Healthcare & Biotech",

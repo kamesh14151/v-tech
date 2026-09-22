@@ -547,7 +547,7 @@ export function RuleEngineView() {
                     <option>Cricket & Sports</option>
                     <option>IT Companies & Tech</option>
                     <option>Automotive & EV</option>
-                    <option>Cinema & Entertainment</option>
+                    <option>Vee Tech & Sona College</option>
                     <option>Healthcare & Biotech</option>
                   </select>
                 </div>
